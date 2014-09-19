@@ -1,0 +1,8 @@
+*.obj
+*.idb
+*.lib
+*.pch
+*.plg
+*.opt
+debug
+release
