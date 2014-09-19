@@ -19,9 +19,17 @@
 // GRIP Script line parser.
 #include "DexInterpreterFunctions.h"
 
+// Define this constant to fill the buffer with the specified minutes of data.
+#define FAKE_DATA 20
+
 #define X 0
 #define Y 1
 #define Z 2
+
+#define ROLL	0
+#define PITCH	1
+#define YAW		2
+
 
 #define MISSING_VALUE	9999.9999
 
@@ -84,7 +92,10 @@ char CGripGroundMonitorDlg::message[MAX_STEPS][132];
 char *CGripGroundMonitorDlg::type[MAX_STEPS];
 bool CGripGroundMonitorDlg::comment[MAX_STEPS];
 
+float CGripGroundMonitorDlg::ManipulandumOrientation[MAX_FRAMES][3];
 float CGripGroundMonitorDlg::ManipulandumPosition[MAX_FRAMES][3];
+float CGripGroundMonitorDlg::LoadForce[MAX_FRAMES][3];
+float CGripGroundMonitorDlg::GripForce[MAX_FRAMES];
 float CGripGroundMonitorDlg::Time[MAX_FRAMES];
 
 
@@ -102,8 +113,18 @@ CGripGroundMonitorDlg::CGripGroundMonitorDlg(CWnd* pParent /*=NULL*/)
 	type_query =  "Query  (waiting for response)";
 	type_alert =  "Alert  (displayed only if error)";
 
+	// Set the limits for the various graphs.
+	// For the moment they are constant.
+
 	lowerPositionLimit = -500.0;
 	upperPositionLimit =  750.0;
+
+	lowerForceLimit = -10.0;
+	upperForceLimit =  10.0;
+
+	lowerGripLimit =  -1.0;
+	upperGripLimit =  20.0;
+
 
 }
 
@@ -223,20 +244,22 @@ void CGripGroundMonitorDlg::Intialize2DGraphics() {
 	ViewSetEdges( cop_view, 0, 0, 1, 1 );
 	ViewMakeSquare(cop_view);
 
-//	DisplayDisableCache( stripchart_display );
-//	for ( int i = 0; i < N_PHASEPLOTS; i++ ) DisplayDisableCache( phase_display[i] );
-
-	
-
 }
 
 void CGripGroundMonitorDlg::GraphManipulandumPosition( View view, int start_frame, int stop_frame ) {
 
-	DisplayActivate( stripchart_display );
-	ViewErase( view );
+	Display display = view->display;
+	DisplayActivate( display );
+	
+	ViewColor( view, GREY6 );
+	ViewBox( view );
+	ViewTitle( view, "Manipulandum Position", INSIDE_LEFT, INSIDE_TOP, 0.0 );
+
 	ViewSetXLimits( view, start_frame, stop_frame );
 	ViewSetYLimits( view, lowerPositionLimit, upperPositionLimit );
+	ViewAxes( view );
 
+	// Plot all 3 components of the manipulandum position in the same view;
 	for ( int i = 0; i < 3; i++ ) {
 		ViewSelectColor( view, i );
 		ViewPlotAvailableFloats( view, &ManipulandumPosition[0][i], start_frame, stop_frame, sizeof( *ManipulandumPosition ), MISSING_VALUE );
@@ -244,15 +267,56 @@ void CGripGroundMonitorDlg::GraphManipulandumPosition( View view, int start_fram
 
 }
 
+void CGripGroundMonitorDlg::GraphLoadForce( View view, int start_frame, int stop_frame ) {
+
+	Display display = view->display;
+	DisplayActivate( display );
+	
+	ViewColor( view, GREY6 );
+	ViewBox( view );
+	ViewTitle( view, "Load Force", INSIDE_LEFT, INSIDE_TOP, 0.0 );
+
+	ViewSetXLimits( view, start_frame, stop_frame );
+	ViewSetYLimits( view, lowerForceLimit, upperForceLimit );
+	ViewAxes( view );
+
+	// Plot all 3 components of the load force in the same view;
+	for ( int i = 0; i < 3; i++ ) {
+		ViewSelectColor( view, i );
+		ViewPlotAvailableFloats( view, &LoadForce[0][i], start_frame, stop_frame, sizeof( *LoadForce ), MISSING_VALUE );
+	}
+
+}
+
+void CGripGroundMonitorDlg::GraphGripForce( View view, int start_frame, int stop_frame ) {
+
+	Display display = view->display;
+	DisplayActivate( display );
+	
+	ViewColor( view, GREY6 );
+	ViewBox( view );
+	ViewTitle( view, "Grip Force", INSIDE_LEFT, INSIDE_TOP, 0.0 );
+
+	ViewSetXLimits( view, start_frame, stop_frame );
+	ViewSetYLimits( view, lowerGripLimit, upperGripLimit );
+	ViewAxes( view );
+		
+	ViewSelectColor( view, CYAN );
+	ViewPlotAvailableFloats( view, &GripForce[0], start_frame, stop_frame, sizeof( *GripForce ), MISSING_VALUE );
+
+}
+
 void CGripGroundMonitorDlg::PlotManipulandumPosition( int start_frame, int stop_frame ) {
 
 	View view;
 
+	// Define the pairs for each phase plot.
 	static struct {
 		int abscissa;
 		int ordinate;
 	} pair[3] = { {Z,Y}, {X,Y}, {X,Z} };
 
+	// XY plot of Manipulandum position data.
 	for ( int i = 0; i < 3; i++ ) {
 		DisplayActivate( phase_display[i] );
 		Erase( phase_display[i] );
@@ -295,6 +359,9 @@ void CGripGroundMonitorDlg::Draw2DGraphics() {
 	}
 
 	GraphManipulandumPosition( LayoutViewN( stripchart_layout, 0 ), 0, nFrames );
+	GraphGripForce( LayoutViewN( stripchart_layout, 1 ), 0, nFrames );
+	GraphLoadForce( LayoutViewN( stripchart_layout, 2 ), 0, nFrames );
+
 	PlotManipulandumPosition( 0, nFrames );
 
 }
@@ -652,17 +719,27 @@ void CGripGroundMonitorDlg::ParseSubjectFile ( void ) {
 void CGripGroundMonitorDlg::ResetBuffers( void ) {
 	nFrames = 0;
 
+#ifdef FAKE_DATA
+
 	// Simulate some data.
 	unsigned int frame;
-	nFrames = 60 * 20;
+	nFrames = FAKE_DATA * 60 * 20;
 	for ( frame = 0; frame <= nFrames && frame < MAX_FRAMES; frame++ ) {
 
 		Time[frame] = (float) frame * 0.05;
-		ManipulandumPosition[frame][X] = 30.0 * sin( Time[frame] * Pi * 2.0 / 5.0 );
-		ManipulandumPosition[frame][Y] = 300.0 * cos( Time[frame] * Pi * 2.0 / 5.0 ) + 200.0;
-		ManipulandumPosition[frame][Z] = -75.0 * sin( Time[frame] * Pi * 2.0 / 5.0 ) - 300.0;
+		ManipulandumPosition[frame][X] = 30.0 * sin( Time[frame] * Pi * 2.0 / 50.0 );
+		ManipulandumPosition[frame][Y] = 300.0 * cos( Time[frame] * Pi * 2.0 / 75.0 ) + 200.0;
+		ManipulandumPosition[frame][Z] = -75.0 * sin( Time[frame] * Pi * 2.0 / 155.0 ) - 300.0;
+
+		GripForce[frame] = fabs( -5.0 * sin( Time[frame] * Pi * 2.0 / 155.0 )  );
+		for ( int i = 0; i < 3; i++ ) {
+			LoadForce[frame][i] = ManipulandumPosition[frame][ (i+2) % 3] / 200.0;
+		}
+
 
 	}
+
+#endif
 
 
 }
@@ -786,7 +863,7 @@ void CGripGroundMonitorDlg::OnSelchangeTasks()
 
 void CGripGroundMonitorDlg::OnSelchangeSteps() 
 {
-	HBITMAP bm;
+	static HBITMAP bm = 0;
 
 	// TODO: Add your control notification handler code here
 	char line[1024];
@@ -844,6 +921,8 @@ void CGripGroundMonitorDlg::OnSelchangeSteps()
 		char picture_path[1024];
 		strcpy( picture_path, PictureFilenamePrefix );
 		strcat( picture_path, picture[selected_line] );
+		// If we had loaded a bitmap previously, free the associated memory.
+		DeleteObject( bm );
 		bm = (HBITMAP) LoadImage( NULL, picture_path, IMAGE_BITMAP, (int) (.5 * 540), (int) (.5 * 405), LR_CREATEDIBSECTION | LR_LOADFROMFILE | LR_VGACOLOR );
 		SendDlgItemMessage( IDC_PICTURE, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM) bm );
 	}	
