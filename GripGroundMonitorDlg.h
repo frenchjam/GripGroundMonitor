@@ -15,6 +15,11 @@
 
 // Max number of frames (data slices)
 #define MAX_FRAMES (2*60*60*20)
+#define CODA_MARKERS 20
+#define MANIPULANDUM_FIRST_MARKER 0
+#define MANIPULANDUM_LAST_MARKER  7
+
+#define STRIPCHARTS	6
 
 // A convenient macro to hand message/picture pairs.
 #define add_to_message_pair(x,y,z) { strcpy( message[lines], y ); if ( z ) strcpy( picture[lines], z ); else strcpy( picture[lines], "" ); type[lines] = type_alert; }
@@ -50,7 +55,8 @@ public:
 	static float	LoadForce[MAX_FRAMES][3];
 	static float	GripForce[MAX_FRAMES];
 	static float	CenterOfPressure[MAX_FRAMES][2];
-	static char		MarkerVisibility[MAX_FRAMES][20];
+	static char		MarkerVisibility[MAX_FRAMES][CODA_MARKERS];
+	static char		ManipulandumVisibility[MAX_FRAMES];
 
 	double lowerPositionLimit;
 	double upperPositionLimit;
@@ -64,6 +70,7 @@ public:
 	void PlotManipulandumPosition( int start_frame, int stop_frame );
 	void GraphLoadForce( View view, int start_frame, int stop_frame );
 	void GraphGripForce( View view, int start_frame, int stop_frame );
+	void GraphVisibility( View view, int start_frame, int stop_frame );
 	void PlotCOP( int start_frame, int stop_frame );
 
 	// Dialog Data

@@ -31,7 +31,8 @@
 #define YAW		2
 
 
-#define MISSING_VALUE	9999.9999
+#define MISSING_FLOAT	9999.9999
+#define MISSING_CHAR	127
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -97,7 +98,8 @@ float CGripGroundMonitorDlg::ManipulandumPosition[MAX_FRAMES][3];
 float CGripGroundMonitorDlg::LoadForce[MAX_FRAMES][3];
 float CGripGroundMonitorDlg::GripForce[MAX_FRAMES];
 float CGripGroundMonitorDlg::Time[MAX_FRAMES];
-
+char  CGripGroundMonitorDlg::MarkerVisibility[MAX_FRAMES][CODA_MARKERS];
+char  CGripGroundMonitorDlg::ManipulandumVisibility[MAX_FRAMES];
 
 CGripGroundMonitorDlg::CGripGroundMonitorDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CGripGroundMonitorDlg::IDD, pParent)
@@ -180,7 +182,7 @@ void CGripGroundMonitorDlg::Intialize2DGraphics() {
 	DisplayInit( stripchart_display );
 	
 	// Create an array of Views that will be used to plot data in stripchart form.
-	stripchart_layout = CreateLayout( stripchart_display, 5, 1 );
+	stripchart_layout = CreateLayout( stripchart_display, STRIPCHARTS, 1 );
 	LayoutSetDisplayEdgesRelative( stripchart_layout, 0.01, 0.01, 0.99, 0.99 );
 
 	// Create a Display and View for each of the phase plot subwindows:
@@ -262,7 +264,7 @@ void CGripGroundMonitorDlg::GraphManipulandumPosition( View view, int start_fram
 	// Plot all 3 components of the manipulandum position in the same view;
 	for ( int i = 0; i < 3; i++ ) {
 		ViewSelectColor( view, i );
-		ViewPlotAvailableFloats( view, &ManipulandumPosition[0][i], start_frame, stop_frame, sizeof( *ManipulandumPosition ), MISSING_VALUE );
+		ViewPlotAvailableFloats( view, &ManipulandumPosition[0][i], start_frame, stop_frame, sizeof( *ManipulandumPosition ), MISSING_FLOAT );
 	}
 
 }
@@ -283,7 +285,7 @@ void CGripGroundMonitorDlg::GraphLoadForce( View view, int start_frame, int stop
 	// Plot all 3 components of the load force in the same view;
 	for ( int i = 0; i < 3; i++ ) {
 		ViewSelectColor( view, i );
-		ViewPlotAvailableFloats( view, &LoadForce[0][i], start_frame, stop_frame, sizeof( *LoadForce ), MISSING_VALUE );
+		ViewPlotAvailableFloats( view, &LoadForce[0][i], start_frame, stop_frame, sizeof( *LoadForce ), MISSING_FLOAT );
 	}
 
 }
@@ -302,7 +304,7 @@ void CGripGroundMonitorDlg::GraphGripForce( View view, int start_frame, int stop
 	ViewAxes( view );
 		
 	ViewSelectColor( view, CYAN );
-	ViewPlotAvailableFloats( view, &GripForce[0], start_frame, stop_frame, sizeof( *GripForce ), MISSING_VALUE );
+	ViewPlotAvailableFloats( view, &GripForce[0], start_frame, stop_frame, sizeof( *GripForce ), MISSING_FLOAT );
 
 }
 
@@ -324,8 +326,36 @@ void CGripGroundMonitorDlg::PlotManipulandumPosition( int start_frame, int stop_
 		ViewSetXLimits( view, lowerPositionLimit, upperPositionLimit );
 		ViewSetYLimits( view, lowerPositionLimit, upperPositionLimit );
 		ViewSelectColor( view, i );
-		ViewXYPlotAvailableFloats( view, &ManipulandumPosition[0][pair[i].abscissa], &ManipulandumPosition[0][pair[i].ordinate], start_frame, stop_frame, sizeof( *ManipulandumPosition ), sizeof( *ManipulandumPosition ), MISSING_VALUE );
+		ViewXYPlotAvailableFloats( view, &ManipulandumPosition[0][pair[i].abscissa], &ManipulandumPosition[0][pair[i].ordinate], start_frame, stop_frame, sizeof( *ManipulandumPosition ), sizeof( *ManipulandumPosition ), MISSING_FLOAT );
 	}
+
+}
+
+void CGripGroundMonitorDlg::GraphVisibility( View view, int start_frame, int stop_frame ) {
+
+	Display display = view->display;
+	DisplayActivate( display );
+	
+	ViewColor( view, GREY6 );
+	ViewBox( view );
+	ViewTitle( view, "Visibility", INSIDE_LEFT, INSIDE_TOP, 0.0 );
+
+	ViewSetXLimits( view, start_frame, stop_frame );
+	ViewSetYLimits( view, 0, 100 );
+	ViewAxes( view );
+
+	// Plot all the visibility traces in the same view;
+	// Each marker is assigned a unique non-zero value when it is visible,
+	//  such that the traces are spread out and grouped in the view.
+	for ( int mrk = 0; mrk < CODA_MARKERS; mrk++ ) {
+		ViewColor( view, mrk % 3 );
+		ViewPlotAvailableChars( view, &MarkerVisibility[0][mrk], start_frame, stop_frame, sizeof( *MarkerVisibility ), MISSING_CHAR );
+	}
+
+	ViewColor( view, BLACK );
+	ViewBoxPlotChars( view, &ManipulandumVisibility[0],  start_frame, stop_frame, sizeof( *ManipulandumVisibility ) );
+	ViewColor( view, RED );
+	ViewHorizontalLine( view, 9 );
 
 }
 
@@ -361,6 +391,7 @@ void CGripGroundMonitorDlg::Draw2DGraphics() {
 	GraphManipulandumPosition( LayoutViewN( stripchart_layout, 0 ), 0, nFrames );
 	GraphGripForce( LayoutViewN( stripchart_layout, 1 ), 0, nFrames );
 	GraphLoadForce( LayoutViewN( stripchart_layout, 2 ), 0, nFrames );
+	GraphVisibility( LayoutViewN( stripchart_layout, 3 ), 0, nFrames );
 
 	PlotManipulandumPosition( 0, nFrames );
 
@@ -712,8 +743,6 @@ void CGripGroundMonitorDlg::ParseSubjectFile ( void ) {
 
 }
 
-
-
 /////////////////////////////////////////////////////////////////////////////
 
 void CGripGroundMonitorDlg::ResetBuffers( void ) {
@@ -722,6 +751,9 @@ void CGripGroundMonitorDlg::ResetBuffers( void ) {
 #ifdef FAKE_DATA
 
 	// Simulate some data.
+
+	int i, mrk;
+
 	unsigned int frame;
 	nFrames = FAKE_DATA * 60 * 20;
 	for ( frame = 0; frame <= nFrames && frame < MAX_FRAMES; frame++ ) {
@@ -732,10 +764,32 @@ void CGripGroundMonitorDlg::ResetBuffers( void ) {
 		ManipulandumPosition[frame][Z] = -75.0 * sin( Time[frame] * Pi * 2.0 / 155.0 ) - 300.0;
 
 		GripForce[frame] = fabs( -5.0 * sin( Time[frame] * Pi * 2.0 / 155.0 )  );
-		for ( int i = 0; i < 3; i++ ) {
+		for ( i = X; i <= Z; i++ ) {
 			LoadForce[frame][i] = ManipulandumPosition[frame][ (i+2) % 3] / 200.0;
 		}
 
+		for ( mrk = 0; mrk <CODA_MARKERS; mrk++ ) {
+
+			int grp = ( mrk >= 8 ? ( mrk >= 16 ? mrk + 20 : mrk + 10 ) : mrk ) + 35;
+			if ( frame == 0 ) MarkerVisibility[frame][mrk] = grp;
+			else {
+				if ( MarkerVisibility[frame-1][mrk] != MISSING_CHAR ) {
+					if ( rand() % 1000 < 1 ) MarkerVisibility[frame][mrk] = MISSING_CHAR;
+					else MarkerVisibility[frame][mrk] = grp;
+				}
+				else {
+					if ( rand() % 1000 < 1 ) MarkerVisibility[frame][mrk] = grp;
+					else MarkerVisibility[frame][mrk] = MISSING_CHAR;
+				}
+			}
+		}
+			
+		ManipulandumVisibility[frame] = 0;
+		for ( mrk = MANIPULANDUM_FIRST_MARKER; mrk <= MANIPULANDUM_LAST_MARKER; mrk++ ) {
+			if ( MarkerVisibility[frame][mrk] != MISSING_CHAR ) ManipulandumVisibility[frame]++;
+		}
+		if ( ManipulandumVisibility[frame] < 3 ) ManipulandumPosition[frame][X] = ManipulandumPosition[frame][Y] = ManipulandumPosition[frame][Z] = MISSING_FLOAT;
+		ManipulandumVisibility[frame] *= 3;
 
 	}
 
@@ -902,8 +956,6 @@ void CGripGroundMonitorDlg::OnSelchangeSteps()
 		GetDlgItem( IDCANCEL )->ShowWindow( SW_HIDE );
 		GetDlgItem( IDINTERRUPT )->ShowWindow( SW_SHOW );
 	}
-
-
 
 	SetDlgItemInt( IDC_STEPID, stepID[selected_line] );
 
