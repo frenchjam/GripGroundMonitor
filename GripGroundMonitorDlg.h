@@ -46,16 +46,25 @@ public:
 	unsigned int	nFrames;
 	static float	Time[MAX_FRAMES];
 	static float	ManipulandumPosition[MAX_FRAMES][3];
+	static float	ManipulandumOrientation[MAX_FRAMES][3];
 	static float	LoadForce[MAX_FRAMES][3];
 	static float	GripForce[MAX_FRAMES];
+	static float	CenterOfPressure[MAX_FRAMES][2];
 	static char		MarkerVisibility[MAX_FRAMES][20];
 
 	double lowerPositionLimit;
 	double upperPositionLimit;
+	double lowerForceLimit;
+	double upperForceLimit;
+	double lowerGripLimit;
+	double upperGripLimit;
 
 	void ResetBuffers( void );
 	void GraphManipulandumPosition( View view, int start_frame, int stop_frame );
 	void PlotManipulandumPosition( int start_frame, int stop_frame );
+	void GraphLoadForce( View view, int start_frame, int stop_frame );
+	void GraphGripForce( View view, int start_frame, int stop_frame );
+	void PlotCOP( int start_frame, int stop_frame );
 
 	// Dialog Data
 	//{{AFX_DATA(CGripGroundMonitorDlg)
