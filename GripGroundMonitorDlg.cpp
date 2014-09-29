@@ -14,10 +14,10 @@
 #include <io.h>
 
 // A convenient printf-like message box.
-#include "fMessageBox.h"
+#include "..\Useful\fMessageBox.h"
 
 // GRIP Script line parser.
-#include "DexInterpreterFunctions.h"
+#include "..\Useful\ParseCommaDelimitedLine.h"
 
 // Define this constant to fill the buffer with the specified minutes of data.
 #define FAKE_DATA 20
@@ -665,10 +665,9 @@ void CGripGroundMonitorDlg::ParseSessionFile ( const char *filename ) {
 }
 
 
-void CGripGroundMonitorDlg::ParseSubjectFile ( void ) {
+int CGripGroundMonitorDlg::ParseSubjectFile ( const char *user_file ) {
 
-	char user_file[1024] = "users.dex";
-	char log_file[1024] = "DexLintLog.txt";
+//	char log_file[1024] = "DexLintLog.txt";
 
 	FILE *fp;
 
@@ -688,7 +687,7 @@ void CGripGroundMonitorDlg::ParseSubjectFile ( void ) {
 		sprintf( msg, "Error opening subject file %s for read.", user_file );
 		printf( "%s\n", msg );
 		MessageBox( msg, "DexScriptRunner", MB_OK | MB_ICONERROR );
-		exit( NO_USER_FILE );
+		return( ERROR_EXIT );
 	}
 
 	// Step through line by line and follow the links to the session files.
@@ -750,6 +749,7 @@ void CGripGroundMonitorDlg::ParseSubjectFile ( void ) {
 	}
 
 	fclose( fp );
+	return( 0 );
 
 }
 
@@ -813,6 +813,9 @@ void CGripGroundMonitorDlg::ResetBuffers( void ) {
 
 BOOL CGripGroundMonitorDlg::OnInitDialog()
 {
+
+	char user_file[1024] = "users.dex";
+
 	CDialog::OnInitDialog();
 
 	// Add "About..." menu item to system menu.
@@ -841,17 +844,15 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	// Reset the data buffers.
 	ResetBuffers();
 
+	// Starting from the root, load all the script items.
+	if ( 0 != ParseSubjectFile( user_file )) PostQuitMessage( 0 );
+	SendDlgItemMessage( IDC_SUBJECTS, LB_SETCURSEL, 0, 0 );
+	OnSelchangeSubjects();
+
 	// Create the 2D graphics displays.
 	Intialize2DGraphics();
 	Draw2DGraphics();
 
-	// Starting from the root, load all the script items.
-	ParseSubjectFile();
-	SendDlgItemMessage( IDC_SUBJECTS, LB_SETCURSEL, 0, 0 );
-	OnSelchangeSubjects();
-
-
-	
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 

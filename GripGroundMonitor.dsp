@@ -143,19 +143,23 @@ SOURCE=.\res\GripGroundMonitor.rc2
 # PROP Default_Filter ""
 # Begin Source File
 
-SOURCE=..\lib\external\OPENGL32.LIB
+SOURCE=..\lib\WS2_32.LIB
 # End Source File
 # Begin Source File
 
-SOURCE=..\lib\external\glut32.lib
+SOURCE=..\lib\GLAUX.LIB
 # End Source File
 # Begin Source File
 
-SOURCE=..\lib\external\GLU32.LIB
+SOURCE=..\lib\GLU32.LIB
 # End Source File
 # Begin Source File
 
-SOURCE=..\lib\external\GLAUX.LIB
+SOURCE=..\lib\glut32.lib
+# End Source File
+# Begin Source File
+
+SOURCE=..\lib\OPENGL32.LIB
 # End Source File
 # End Group
 # Begin Source File

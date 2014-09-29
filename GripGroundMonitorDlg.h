@@ -42,7 +42,7 @@ public:
 	void ParseTaskFile ( const char *filename );
 	void ParseProtocolFile ( const char *filename );
 	void ParseSessionFile ( const char *filename ) ;
-	void ParseSubjectFile ( void );
+	int  ParseSubjectFile ( const char *filename );
 
 	void Intialize2DGraphics();
 	void Draw2DGraphics();
