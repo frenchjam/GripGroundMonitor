@@ -430,7 +430,7 @@ void CGripGroundMonitorDlg::ParseTaskFile ( const char *filename ) {
 
 	SendDlgItemMessage( IDC_STEPS, LB_RESETCONTENT, 0, 0 );
 
-	/*
+
 	SendDlgItemMessage( IDC_STEPS, LB_ADDSTRING, 0, (LPARAM) "<Waiting to start ...>" );
 	strcpy( message[lines], status_message );
 	strcpy( picture[lines], status_picture );
@@ -438,7 +438,7 @@ void CGripGroundMonitorDlg::ParseTaskFile ( const char *filename ) {
 	comment[lines] = true;
 	stepID[lines] = current_step;
 	lines++;
-*/
+
 	while ( fgets( line, sizeof( line ), fp ) ) {
 
 		line[strlen( line ) - 1] = 0;
