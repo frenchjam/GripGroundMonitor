@@ -109,7 +109,7 @@ CGripGroundMonitorDlg::CGripGroundMonitorDlg(CWnd* pParent /*=NULL*/)
 	// Note that LoadIcon does not require a subsequent DestroyIcon in Win32
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
-	strcpy( PictureFilenamePrefix, "Z:\\SoftwareDevelopement\\DexterousManipulation\\DexPictures\\" );
+	strcpy( PictureFilenamePrefix, ".\\pictures\\" );
 
 	type_status = "Status (script will continue)";
 	type_query =  "Query  (waiting for response)";
@@ -429,11 +429,21 @@ void CGripGroundMonitorDlg::ParseTaskFile ( const char *filename ) {
 	}
 
 	SendDlgItemMessage( IDC_STEPS, LB_RESETCONTENT, 0, 0 );
+
+	/*
+	SendDlgItemMessage( IDC_STEPS, LB_ADDSTRING, 0, (LPARAM) "<Waiting to start ...>" );
+	strcpy( message[lines], status_message );
+	strcpy( picture[lines], status_picture );
+	type[lines] = type_status;
+	comment[lines] = true;
+	stepID[lines] = current_step;
+	lines++;
+*/
 	while ( fgets( line, sizeof( line ), fp ) ) {
 
 		line[strlen( line ) - 1] = 0;
 		SendDlgItemMessage( IDC_STEPS, LB_ADDSTRING, 0, (LPARAM) line );
-		if ( strlen( line ) ) tokens = ParseCommaDelimitedLine( token, line );
+		tokens = ParseCommaDelimitedLine( token, line );
 
 		if ( tokens ) {
 
@@ -1053,7 +1063,13 @@ void CGripGroundMonitorDlg::OnGoto()
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
 		if ( taskID[i] == task ) break;
 	}
-	if ( taskID[i] != task ) {
+	// Requesting task 0 say to move the selection to the next line.
+	if ( task == 0 ) {
+		SetDlgItemInt( IDC_TASKID, taskID[current_selection+1] );
+		SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, current_selection+1, 0 );
+		OnSelchangeTasks();
+	}
+	else if ( taskID[i] != task ) {
 		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Task ID %3d not recognized.", task );
 		SetDlgItemInt( IDC_TASKID, taskID[current_selection] );
 	}
