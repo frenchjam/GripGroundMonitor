@@ -77,6 +77,7 @@ public:
 	void PlotCOP( int start_frame, int stop_frame );
 
 	int GetLatestGripHK( int *subject, int *protocol, int *task, int *step );
+	int GetGripRT( void );
 
 	// Dialog Data
 	//{{AFX_DATA(CGripGroundMonitorDlg)
