@@ -22,7 +22,6 @@
 
 #include <afxsock.h>		// MFC socket extensions
 
-#include <stdio.h>
 
 // 2D Graphics Package
 #include "useful.h"

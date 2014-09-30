@@ -5,6 +5,15 @@
 #include "GripGroundMonitor.h"
 #include "GripGroundMonitorDlg.h"
 
+#include <stdio.h>
+#include <io.h>
+#include <fcntl.h>
+#include <share.h>
+#include <sys\stat.h>
+#include <conio.h>
+
+#include "GripPackets.h"
+
 // Defines that increase the amount of info in the memory leak report.
 #define _CRTDBG_MAP_ALLOC
 #include <crtdbg.h>
@@ -30,6 +39,7 @@
 #define PITCH	1
 #define YAW		2
 
+#define IDT_TIMER1 1001
 
 #define MISSING_FLOAT	9999.9999
 #define MISSING_CHAR	127
@@ -101,15 +111,13 @@ float CGripGroundMonitorDlg::Time[MAX_FRAMES];
 char  CGripGroundMonitorDlg::MarkerVisibility[MAX_FRAMES][CODA_MARKERS];
 char  CGripGroundMonitorDlg::ManipulandumVisibility[MAX_FRAMES];
 
-CGripGroundMonitorDlg::CGripGroundMonitorDlg(CWnd* pParent /*=NULL*/)
+CGripGroundMonitorDlg::CGripGroundMonitorDlg(CWnd* pParent, const char *packet_buffer_root, const char *script_directory )
 	: CDialog(CGripGroundMonitorDlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CGripGroundMonitorDlg)
 	//}}AFX_DATA_INIT
 	// Note that LoadIcon does not require a subsequent DestroyIcon in Win32
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
-
-	strcpy( PictureFilenamePrefix, ".\\pictures\\" );
 
 	type_status = "Status (script will continue)";
 	type_query =  "Query  (waiting for response)";
@@ -126,6 +134,12 @@ CGripGroundMonitorDlg::CGripGroundMonitorDlg(CWnd* pParent /*=NULL*/)
 
 	lowerGripLimit =  -1.0;
 	upperGripLimit =  20.0;
+
+	packetBufferPathRoot = packet_buffer_root;
+	scriptDirectory = script_directory;
+	strncpy( PictureFilenamePrefix, scriptDirectory, sizeof( PictureFilenamePrefix ) );
+	strncat( PictureFilenamePrefix, "pictures\\", sizeof( PictureFilenamePrefix ) );
+
 
 
 }
@@ -155,8 +169,103 @@ BEGIN_MESSAGE_MAP(CGripGroundMonitorDlg, CDialog)
 	ON_BN_DOUBLECLICKED(IDC_NEXT_STEP, OnDoubleclickedNextStep)
 	ON_BN_CLICKED(IDC_GOTO, OnGoto)
 	ON_WM_DESTROY()
+	ON_WM_TIMER()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
+
+
+/////////////////////////////////////////////////////////////////////////////
+
+// Realtime operations.
+
+// Max times to try to open the cache file before asking user to continue or not.
+#define MAX_OPEN_CACHE_RETRIES	5
+// Pause time in milliseconds between file open retries.
+#define RETRY_PAUSE	2000		
+// Error code to return if the cache file cannot be opened.
+#define ERROR_CACHE_NOT_FOUND	-1000
+
+int CGripGroundMonitorDlg::GetLatestGripHK( int *subject, int *protocol, int *task, int *step ) {
+
+	static int count = 0;
+
+	int  fid;
+	int packets_read = 0;
+	int bytes_read;
+	int return_code;
+	static unsigned short previousTMCounter = 0;
+	unsigned short bit = 0;
+	int retry_count;
+	int mb_answer;
+
+	EPMTelemetryPacket packet;
+	EPMTelemetryHeaderInfo epmHeader;
+	GripHealthAndStatusInfo hk;
+
+	char filename[1024];
+
+	CreateGripPacketCacheFilename( filename, sizeof( filename ), GRIP_HK_BULK_PACKET, packetBufferPathRoot );
+
+	// Attempt to open the packet cache to read the accumulated packets.
+	// If it is not immediately available, try for a few seconds then query the user.
+	// The user can choose to continue to wait or cancel program execution.
+	do {
+		for ( retry_count = 0; retry_count  < MAX_OPEN_CACHE_RETRIES; retry_count ++ ) {
+			// If open succeeds, it will return zero. So if zero return, break from retry loop.
+			fid = _open( filename, _O_RDONLY | _O_BINARY, _SH_DENYNO, _S_IWRITE | _S_IREAD  );
+			if ( fid != 0 ) break;
+			// Wait a second before trying again.
+			Sleep( RETRY_PAUSE );
+		}
+		// If fid is non-zero, file is open, so break out of loop and continue.
+		if ( fid != 0 ) break;
+		// If return_code is non-zero, we are here because the retry count has been reached without opening the file.
+		// Ask the user if they want to keep on trying or abort.
+		else {
+			mb_answer = fMessageBox( MB_RETRYCANCEL, "GripMMIlite", "Error opening %s for binary read.\nContinue trying?", filename );
+			if ( mb_answer == IDCANCEL ) exit( ERROR_CACHE_NOT_FOUND ); // User chose to abort.
+		}
+	} while ( true ); // Keep trying until success or until user cancels.
+
+	// Read in all of the data packets in the file.
+	packets_read = 0;
+	while ( hkPacketLengthInBytes == (bytes_read = _read( fid, &packet, hkPacketLengthInBytes )) ) {
+		packets_read++;
+		if ( bytes_read < 0 ) {
+			fMessageBox( MB_OK, "GripMMIlite", "Error reading from %s.", filename );
+			exit( -1 );
+		}
+		// Check that it is a valid GRIP packet. It would be strange if it was not.
+		ExtractEPMTelemetryHeaderInfo( &epmHeader, &packet );
+		if ( epmHeader.epmSyncMarker != EPM_TELEMETRY_SYNC_VALUE || epmHeader.TMIdentifier != GRIP_HK_ID ) {
+			fMessageBox( MB_OK, "GripMMIlite", "Unrecognized packet from %s.", filename );
+			exit( -1 );
+		}
+	}
+	// Finished reading. Close the file and check for errors.
+	return_code = _close( fid );
+	if ( return_code ) {
+		fMessageBox( MB_OK, "GripMMIlite", "Error closing %s after binary read.\nError code: %s", filename, return_code );
+		exit( return_code );
+	}
+
+	ExtractGripHealthAndStatusInfo( &hk, &packet );
+	*subject = hk.user;
+	*protocol = hk.protocol;
+	*task = hk.task;
+	*step = hk.step;
+
+
+	// Check if there were new packets since the last time we read the cache.
+	// Return TRUE if yes, FALSE if no.
+	if ( previousTMCounter != epmHeader.TMCounter ) {
+		previousTMCounter = epmHeader.TMCounter;
+		return( TRUE );
+	}
+	else return ( FALSE );
+}
+
+
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -536,6 +645,16 @@ void CGripGroundMonitorDlg::ParseProtocolFile ( const char *filename ) {
 
 	char msg[1024];
 
+	// We want to work in the same directory as the subject file.
+	// Get the directory from the filename.
+	char directory[1024];
+	for ( int i = strlen( filename ); i >=0; i-- ) {
+		if ( filename[i] == '\\' ) break;
+	}
+	strncpy( directory, filename, i + 1 );
+	directory[i+1] = 0;
+
+
 	fp = fopen( filename, "r" );
 	if ( !fp ) {
 		// Signal the error.
@@ -565,9 +684,10 @@ void CGripGroundMonitorDlg::ParseProtocolFile ( const char *filename ) {
 				exit( - 1 );
 			}
 			// The third item is the name of the protocol file.
-			strcpy( task_filename, token[2] );
+			strncpy( task_filename, directory, sizeof( task_filename ) );
+			strncat( task_filename, token[2],  sizeof( task_filename ) );
 			// Check if it is present and readable, unless told to ignore it.
-			if ( strcmp( task_filename, "ignore" ) ) {
+			if ( !strstr( task_filename, "ignore" ) ) {
 				if ( _access( task_filename, 0x00 ) ) {
 					sprintf( msg, "%s Line %03d Cannot access protocol file: %s\n", filename, line_n, task_filename );
 					MessageBox( msg, "DexScriptRunner", MB_OK | MB_ICONERROR );
@@ -607,6 +727,17 @@ void CGripGroundMonitorDlg::ParseSessionFile ( const char *filename ) {
 
 	char msg[1024];
 
+	// We want to work in the same directory as the subject file.
+	// Get the directory from the filename.
+	char directory[1024];
+	for ( int i = strlen( filename ); i >=0; i-- ) {
+		if ( filename[i] == '\\' ) break;
+	}
+	strncpy( directory, filename, i + 1 );
+	directory[i+1] = 0;
+
+
+	// Open the session file, if we can.
 	fp = fopen( filename, "r" );
 	if ( !fp ) {
 		// Signal the error.
@@ -636,9 +767,10 @@ void CGripGroundMonitorDlg::ParseSessionFile ( const char *filename ) {
 				exit( - 1 );
 			}
 			// The third item is the name of the protocol file.
-			strcpy( protocol_filename, token[2] );
+			strncpy( protocol_filename, directory, sizeof( protocol_filename ) );
+			strncat( protocol_filename, token[2], sizeof( protocol_filename ) );
 			// Check if it is present and readable, unless told to ignore it.
-			if ( strcmp( protocol_filename, "ignore" ) ) {
+			if ( !strstr( protocol_filename, "ignore" ) ) {
 				if ( _access( protocol_filename, 0x00 ) ) {
 					sprintf( msg, "%s Line %03d Cannot access protocol file: %s\n", filename, line_n, protocol_filename );
 					MessageBox( msg, "DexScriptRunner", MB_OK | MB_ICONERROR );
@@ -665,9 +797,7 @@ void CGripGroundMonitorDlg::ParseSessionFile ( const char *filename ) {
 }
 
 
-int CGripGroundMonitorDlg::ParseSubjectFile ( const char *user_file ) {
-
-//	char log_file[1024] = "DexLintLog.txt";
+int CGripGroundMonitorDlg::ParseSubjectFile ( const char *filename ) {
 
 	FILE *fp;
 
@@ -676,15 +806,24 @@ int CGripGroundMonitorDlg::ParseSubjectFile ( const char *user_file ) {
 	char line[2048];
 	int line_n = 0;
 
-	char session_filename[256];
+	char session_filename[1024];
 	int subjects = 0;
 
+	// We want to work in the same directory as the subject file.
+	// Get the directory from the filename.
+	char directory[1024];
+	for ( int i = strlen( filename ); i >=0; i-- ) {
+		if ( filename[i] == '\\' ) break;
+	}
+	strncpy( directory, filename, i + 1 );
+	directory[i+1] = 0;
+
 	// Open the root file, if we can.
-	fp = fopen( user_file, "r" );
+	fp = fopen( filename, "r" );
 	if ( !fp ) {
 
 		char msg[1024];
-		sprintf( msg, "Error opening subject file %s for read.", user_file );
+		sprintf( msg, "Error opening subject file %s for read.", filename );
 		printf( "%s\n", msg );
 		MessageBox( msg, "DexScriptRunner", MB_OK | MB_ICONERROR );
 		return( ERROR_EXIT );
@@ -721,7 +860,9 @@ int CGripGroundMonitorDlg::ParseSubjectFile ( const char *user_file ) {
 			}
 			// The third parameter is the name of the session file.
 			// Here we check that it is present and if so, we process it as well.
-			strcpy( session_filename, token[3] );
+			strncpy( session_filename, directory, sizeof( session_filename ) );
+			strncat( session_filename, token[3], sizeof( session_filename ) );
+
 			if ( _access( session_filename, 0x00 ) ) {
 				char msg[1024];
 				// The file must not only be present, it also has to be readable.
@@ -742,7 +883,7 @@ int CGripGroundMonitorDlg::ParseSubjectFile ( const char *user_file ) {
 		}
 		else if ( tokens != 0 ) {
 			char msg[1024];
-			sprintf( msg, "%s Line %03d Wrong number of parameters: %s\n", user_file, line_n, line );
+			sprintf( msg, "%s Line %03d Wrong number of parameters: %s\n", filename, line_n, line );
 			MessageBox( msg, "DexScriptRunner", MB_OK | MB_ICONERROR );
 			exit( ERROR_EXIT );
 		}			
@@ -814,7 +955,7 @@ void CGripGroundMonitorDlg::ResetBuffers( void ) {
 BOOL CGripGroundMonitorDlg::OnInitDialog()
 {
 
-	char user_file[1024] = "users.dex";
+	char user_file_path[1024] = "users.dex";
 
 	CDialog::OnInitDialog();
 
@@ -845,13 +986,18 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	ResetBuffers();
 
 	// Starting from the root, load all the script items.
-	if ( 0 != ParseSubjectFile( user_file )) PostQuitMessage( 0 );
+	strncpy( user_file_path, scriptDirectory, sizeof( user_file_path )) ;
+	strncat( user_file_path, "users.dex", sizeof( user_file_path )) ;
+	if ( 0 != ParseSubjectFile( user_file_path )) PostQuitMessage( 0 );
 	SendDlgItemMessage( IDC_SUBJECTS, LB_SETCURSEL, 0, 0 );
 	OnSelchangeSubjects();
 
 	// Create the 2D graphics displays.
 	Intialize2DGraphics();
 	Draw2DGraphics();
+
+
+	SetTimer( IDT_TIMER1, 500, NULL );
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -913,6 +1059,19 @@ void CGripGroundMonitorDlg::OnSelchangeSubjects()
 	SendDlgItemMessage( IDC_PROTOCOLS, LB_SETCURSEL, 0, 0 );
 	SetDlgItemInt( IDC_SUBJECTID, subjectID[subject] );
 	OnSelchangeProtocols();	
+}
+
+void CGripGroundMonitorDlg::OnSelchangeProtocols() 
+
+{
+	
+	// Update when the selected protocol changes.
+	int protocol = SendDlgItemMessage( IDC_PROTOCOLS, LB_GETCURSEL, 0, 0 );
+	ParseProtocolFile( protocol_file[protocol] );
+	SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, 0, 0 );
+	SetDlgItemInt( IDC_PROTOCOLID, protocolID[protocol] );
+	OnSelchangeTasks();
+	
 }
 
 void CGripGroundMonitorDlg::OnSelchangeTasks() 
@@ -982,26 +1141,13 @@ void CGripGroundMonitorDlg::OnSelchangeSteps()
 	// Show the picture.
 	if ( strlen( picture[selected_line] ) ) {
 		char picture_path[1024];
-		strcpy( picture_path, PictureFilenamePrefix );
-		strcat( picture_path, picture[selected_line] );
+		strncpy( picture_path, PictureFilenamePrefix, sizeof( picture_path ) );
+		strncat( picture_path, picture[selected_line], sizeof( picture_path ) );
 		// If we had loaded a bitmap previously, free the associated memory.
 		DeleteObject( bm );
 		bm = (HBITMAP) LoadImage( NULL, picture_path, IMAGE_BITMAP, (int) (.5 * 540), (int) (.5 * 405), LR_CREATEDIBSECTION | LR_LOADFROMFILE | LR_VGACOLOR );
 		SendDlgItemMessage( IDC_PICTURE, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM) bm );
 	}	
-}
-
-void CGripGroundMonitorDlg::OnSelchangeProtocols() 
-
-{
-	
-	// Update when the selected protocol changes.
-	int protocol = SendDlgItemMessage( IDC_PROTOCOLS, LB_GETCURSEL, 0, 0 );
-	ParseProtocolFile( protocol_file[protocol] );
-	SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, 0, 0 );
-	SetDlgItemInt( IDC_PROTOCOLID, protocolID[protocol] );
-	OnSelchangeTasks();
-	
 }
 
 void CGripGroundMonitorDlg::OnNextStep() 
@@ -1030,12 +1176,17 @@ void CGripGroundMonitorDlg::OnGoto()
 	int i, current_selection;
 
 	int subject = GetDlgItemInt( IDC_SUBJECTID );
+	int protocol = GetDlgItemInt( IDC_PROTOCOLID );
+	int task = GetDlgItemInt( IDC_TASKID );
+	int step = GetDlgItemInt( IDC_STEPID );
+
+
 	current_selection =  SendDlgItemMessage( IDC_SUBJECTS, LB_GETCURSEL, 0, 0 );
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
 		if ( subjectID[i] == subject ) break;
 	}
 	if ( subjectID[i] != subject ) {
-		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Subject ID %3d not recognized.", subject );
+		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Subject ID %3d not recognized.\nReverting to previous subject.", subject );
 		SetDlgItemInt( IDC_SUBJECTID, subjectID[current_selection] );
 	}
 	else if ( i != current_selection ) {
@@ -1043,14 +1194,12 @@ void CGripGroundMonitorDlg::OnGoto()
 		OnSelchangeSubjects();
 	}
 
-
-	int protocol = GetDlgItemInt( IDC_PROTOCOLID );
 	current_selection =  SendDlgItemMessage( IDC_PROTOCOLS, LB_GETCURSEL, 0, 0 );
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
 		if ( protocolID[i] == protocol ) break;
 	}
 	if ( protocolID[i] != protocol ) {
-		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Protocol ID %3d not recognized.", protocol );
+		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Protocol ID %3d not recognized.\nReverting to previous protocol.", protocol );
 		SetDlgItemInt( IDC_PROTOCOLID, protocolID[current_selection] );
 	}
 	else if ( i != current_selection ) {
@@ -1058,8 +1207,6 @@ void CGripGroundMonitorDlg::OnGoto()
 		OnSelchangeProtocols();
 	}
 
-
-	int task = GetDlgItemInt( IDC_TASKID );
 	current_selection =  SendDlgItemMessage( IDC_TASKS, LB_GETCURSEL, 0, 0 );
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
 		if ( taskID[i] == task ) break;
@@ -1071,7 +1218,7 @@ void CGripGroundMonitorDlg::OnGoto()
 		OnSelchangeTasks();
 	}
 	else if ( taskID[i] != task ) {
-		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Task ID %3d not recognized.", task );
+//		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Task ID %3d not recognized.", task );
 		SetDlgItemInt( IDC_TASKID, taskID[current_selection] );
 	}
 	else if ( i != current_selection ) {
@@ -1080,7 +1227,6 @@ void CGripGroundMonitorDlg::OnGoto()
 	}
 
 
-	int step = GetDlgItemInt( IDC_STEPID );
 	for ( i = 0; i < MAX_STEPS; i++ ) {
 		if ( stepID[i] >= step ) break;
 	}
@@ -1097,4 +1243,33 @@ void CGripGroundMonitorDlg::OnDestroy()
 	DestroyLayouts();
 	DestroyOglDisplays();
 	
+}
+
+void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent) 
+{
+	// TODO: Add your message handler code here and/or call default
+	
+	// Get the latest hk packet info.
+	int hk_subject, hk_protocol, hk_task, hk_step;
+	int gui_subject, gui_protocol, gui_task, gui_step;
+	
+	GetLatestGripHK( &hk_subject, &hk_protocol, &hk_task, &hk_step );
+	gui_subject = GetDlgItemInt( IDC_SUBJECTID );
+	if ( (hk_subject != 0) && (hk_subject != gui_subject) ) SetDlgItemInt( IDC_SUBJECTID, hk_subject );
+	gui_protocol = GetDlgItemInt( IDC_PROTOCOLID );
+	if ( (hk_protocol != 0) && (hk_protocol != gui_protocol ) ) SetDlgItemInt( IDC_PROTOCOLID, hk_protocol );
+	gui_task = GetDlgItemInt( IDC_TASKID );
+	gui_step = GetDlgItemInt( IDC_STEPID );
+	if ( hk_task == 0 && hk_step == 0 && gui_step != 0 ) {
+		SetDlgItemInt( IDC_TASKID, gui_task + 1 );
+		SetDlgItemInt( IDC_STEPID, 0 );
+	}
+	else {
+		if ( (hk_task != 0) && (hk_task != gui_task) ) SetDlgItemInt( IDC_TASKID, hk_task );
+		if ( (hk_step != 0) && (hk_step != gui_step ) )  SetDlgItemInt( IDC_STEPID, hk_step );
+	}
+
+	OnGoto();
+
+	CDialog::OnTimer(nIDEvent);
 }

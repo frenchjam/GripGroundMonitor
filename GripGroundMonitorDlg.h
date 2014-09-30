@@ -11,7 +11,7 @@
 // Array dimensions for the GRIP script elements.
 #define MAX_STEPS				4096
 #define MAX_MENU_ITEMS			256
-#define MAX_MENU_ITEM_LENGTH	256
+#define MAX_MENU_ITEM_LENGTH	1024
 
 // Max number of frames (data slices)
 #define MAX_FRAMES (2*60*60*20)
@@ -35,7 +35,7 @@ class CGripGroundMonitorDlg : public CDialog
 {
 // Construction
 public:
-	CGripGroundMonitorDlg(CWnd* pParent = NULL);	// standard constructor
+	CGripGroundMonitorDlg(CWnd* pParent = NULL, const char *packet_buffer_root = ".\\", const char *script_path = ".\\" );	// standard constructor
 
 	// Routines for parsing the GRIP scripts.
 
@@ -65,6 +65,9 @@ public:
 	double lowerGripLimit;
 	double upperGripLimit;
 
+	const char *packetBufferPathRoot;
+	const char *scriptDirectory;
+
 	void ResetBuffers( void );
 	void GraphManipulandumPosition( View view, int start_frame, int stop_frame );
 	void PlotManipulandumPosition( int start_frame, int stop_frame );
@@ -72,6 +75,8 @@ public:
 	void GraphGripForce( View view, int start_frame, int stop_frame );
 	void GraphVisibility( View view, int start_frame, int stop_frame );
 	void PlotCOP( int start_frame, int stop_frame );
+
+	int GetLatestGripHK( int *subject, int *protocol, int *task, int *step );
 
 	// Dialog Data
 	//{{AFX_DATA(CGripGroundMonitorDlg)
@@ -143,6 +148,7 @@ protected:
 	afx_msg void OnDoubleclickedNextStep();
 	afx_msg void OnGoto();
 	afx_msg void OnDestroy();
+	afx_msg void OnTimer(UINT nIDEvent);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
