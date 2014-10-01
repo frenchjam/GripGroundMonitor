@@ -19,7 +19,6 @@ public:
 // Dialog Data
 	//{{AFX_DATA(IddGripGroundDialog)
 	enum { IDD = IDD_GRIPGROUNDMONITOR_DIALOG };
-		// NOTE: the ClassWizard will add data members here
 	//}}AFX_DATA
 
 

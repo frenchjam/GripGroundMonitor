@@ -23,15 +23,6 @@
 #include <afxsock.h>		// MFC socket extensions
 
 
-// 2D Graphics Package
-#include "useful.h"
-#include "OglDisplayInterface.h"
-#include "OglDisplay.h"
-#include "Views.h"
-#include "Layouts.h"
-#include "Displays.h" 
-
-
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 

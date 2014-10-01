@@ -102,6 +102,14 @@ SOURCE=.\GripGroundMonitorDlg.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\GripGroundMonitorPlots.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\GripGroundMonitorScripts.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\StdAfx.cpp
 # ADD CPP /Yc"stdafx.h"
 # End Source File

@@ -8,6 +8,14 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+// 2D Graphics Package
+#include "useful.h"
+#include "..\2dGraphics\2dGraphicsLib\OglDisplayInterface.h"
+#include "..\2dGraphics\2dGraphicsLib\OglDisplay.h"
+#include "..\2dGraphics\2dGraphicsLib\Views.h"
+#include "..\2dGraphics\2dGraphicsLib\Layouts.h"
+#include "..\2dGraphics\2dGraphicsLib\Displays.h" 
+
 // Array dimensions for the GRIP script elements.
 #define MAX_STEPS				4096
 #define MAX_MENU_ITEMS			256
@@ -49,10 +57,14 @@ public:
 
 	// Data buffers.
 	unsigned int	nFrames;
-	static float	Time[MAX_FRAMES];
+	static float	RealMarkerTime[MAX_FRAMES];
+	static float	CompressedMarkerTime[MAX_FRAMES];
+	static float	RealAnalogTime[MAX_FRAMES];
+	static float	CompressedAnalogTime[MAX_FRAMES];
 	static float	ManipulandumPosition[MAX_FRAMES][3];
 	static float	ManipulandumOrientation[MAX_FRAMES][3];
 	static float	LoadForce[MAX_FRAMES][3];
+	static float	Acceleration[MAX_FRAMES][3];
 	static float	GripForce[MAX_FRAMES];
 	static float	CenterOfPressure[MAX_FRAMES][2];
 	static char		MarkerVisibility[MAX_FRAMES][CODA_MARKERS];
@@ -60,20 +72,28 @@ public:
 
 	double lowerPositionLimit;
 	double upperPositionLimit;
+
+	double lowerPositionLimitSpecific[3];
+	double upperPositionLimitSpecific[3];
+
 	double lowerForceLimit;
 	double upperForceLimit;
 	double lowerGripLimit;
 	double upperGripLimit;
 
+	double lowerAccelerationLimit;
+	double upperAccelerationLimit;
+
 	const char *packetBufferPathRoot;
 	const char *scriptDirectory;
 
 	void ResetBuffers( void );
-	void GraphManipulandumPosition( View view, int start_frame, int stop_frame );
-	void PlotManipulandumPosition( int start_frame, int stop_frame );
-	void GraphLoadForce( View view, int start_frame, int stop_frame );
-	void GraphGripForce( View view, int start_frame, int stop_frame );
-	void GraphVisibility( View view, int start_frame, int stop_frame );
+	void GraphManipulandumPosition( View view, double start_instant, double stop_instant, int start_frame, int stop_frame );
+	void PlotManipulandumPosition( double start_window, double stop_window, int start_frame, int stop_frame );
+	void GraphLoadForce( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) ;
+	void GraphAcceleration( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) ;
+	void GraphGripForce( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) ;
+	void GraphVisibility( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) ;
 	void PlotCOP( int start_frame, int stop_frame );
 
 	int GetLatestGripHK( int *subject, int *protocol, int *task, int *step );

@@ -111,18 +111,6 @@ CGripGroundMonitorDlg::CGripGroundMonitorDlg(CWnd* pParent, const char *packet_b
 	type_query =  "Query  (waiting for response)";
 	type_alert =  "Alert  (displayed only if error)";
 
-	// Set the limits for the various graphs.
-	// For the moment they are constant.
-
-	lowerPositionLimit = -500.0;
-	upperPositionLimit =  750.0;
-
-	lowerForceLimit = -10.0;
-	upperForceLimit =  10.0;
-
-	lowerGripLimit =  -1.0;
-	upperGripLimit =  20.0;
-
 	packetBufferPathRoot = packet_buffer_root;
 	scriptDirectory = script_directory;
 	strncpy( PictureFilenamePrefix, scriptDirectory, sizeof( PictureFilenamePrefix ) );
@@ -273,6 +261,8 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 	EPMTelemetryHeaderInfo	epmHeader;
 	GripRealtimeDataInfo	rt;
 
+	int mrk, grp;
+
 	char filename[1024];
 
 	// Empty the data buffers, or more precisely, fill them with missing values.
@@ -318,11 +308,45 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 			
 		// Transfer the data to the buffers for plotting.
 		ExtractGripRealtimeDataInfo( &rt, &packet );
-		for ( int slice = 0; slice < RT_SLICES_PER_PACKET; slice++ ) {
-			Time[nFrames] = nFrames * .05;
-			ManipulandumPosition[nFrames][X] = rt.dataSlice[slice].position[X];
-			ManipulandumPosition[nFrames][Y] = rt.dataSlice[slice].position[Y];
-			ManipulandumPosition[nFrames][Z] = rt.dataSlice[slice].position[Z];
+		for ( int slice = 0; slice < RT_SLICES_PER_PACKET && nFrames < MAX_FRAMES; slice++ ) {
+
+			double y, z;
+
+			RealMarkerTime[nFrames] = nFrames * .05;
+			if ( rt.dataSlice[slice].manipulandumVisibility ) {
+				ManipulandumPosition[nFrames][X] = (float) rt.dataSlice[slice].position[X] / 10.0;
+				ManipulandumPosition[nFrames][Y] = (float) rt.dataSlice[slice].position[Y] / 10.0;
+				ManipulandumPosition[nFrames][Z] = (float) rt.dataSlice[slice].position[Z] / 10.0;
+			}
+			else {
+				ManipulandumPosition[nFrames][X] = MISSING_FLOAT;
+				ManipulandumPosition[nFrames][Y] = MISSING_FLOAT;
+				ManipulandumPosition[nFrames][Z] = MISSING_FLOAT;
+			}
+			RealAnalogTime[nFrames] = nFrames * 0.05;
+			
+			GripForce[nFrames] = ( (double) rt.dataSlice[slice].ft[1][X] - (double) rt.dataSlice[slice].ft[0][X] ) / 2.0;
+
+			y = (double) rt.dataSlice[slice].ft[0][Y] + (double) rt.dataSlice[slice].ft[1][Y];
+			z = (double) rt.dataSlice[slice].ft[0][Z] + (double) rt.dataSlice[slice].ft[1][Z];
+			LoadForce[nFrames][X] = (double) rt.dataSlice[slice].ft[0][X] + (double) rt.dataSlice[slice].ft[1][X];
+			LoadForce[nFrames][Y] = cos( Pi * 22.5 / 180.0 ) * y + sin( Pi * 22.5 / 180.0 )  * z;
+			LoadForce[nFrames][Z] = - sin( Pi * 22.5 / 180.0 ) * y + cos( Pi * 22.5 / 180.0 ) * z;
+
+			for ( mrk = 0, bit = 0x01; mrk < CODA_MARKERS; mrk++, bit = bit << 1 ) {
+
+				grp = ( mrk >= 8 ? ( mrk >= 12 ? mrk + 20 : mrk + 10 ) : mrk ) + 35;
+				if ( rt.dataSlice[slice].markerVisibility[0] & bit ) MarkerVisibility[nFrames][mrk] = grp;
+				else MarkerVisibility[nFrames][mrk] = MISSING_CHAR;
+
+			}
+			if (  (rt.dataSlice[slice].manipulandumVisibility & 0x01) ) ManipulandumVisibility[nFrames] = 10;
+			else ManipulandumVisibility[nFrames] = 0;
+
+			Acceleration[nFrames][X] = (double) rt.dataSlice[slice].acceleration[X];
+			Acceleration[nFrames][Y] = (double) rt.dataSlice[slice].acceleration[Y];
+			Acceleration[nFrames][Z] = (double) rt.dataSlice[slice].acceleration[Z];
+
 			nFrames++;
 		}
 
@@ -390,8 +414,12 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	Intialize2DGraphics();
 	Draw2DGraphics();
 
-
 	SetTimer( IDT_TIMER1, 500, NULL );
+
+	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMAX, TRUE, 5 );
+	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMIN, TRUE, 0 );
+//	SendDlgItemMessage( IDC_LIVE, BM_SETCHECK, BST_CHECKED, 0 );
+
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -434,6 +462,9 @@ void CGripGroundMonitorDlg::OnPaint()
 	}
 	else
 	{
+		// Tell all the subwindows to redraw themselves.
+		SendMessageToDescendants( WM_PAINT, 0, 0, TRUE, FALSE );
+		// Do what every a dialog window would usually do.
 		CDialog::OnPaint();
 	}
 }
@@ -667,8 +698,11 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 
 	OnGoto();
 
-	GetGripRT();
-	Draw2DGraphics();
+//	if ( SendDlgItemMessage( IDC_LIVE, BM_GETCHECK, 0, 0 ) ) {
+		GetGripRT();
+		Draw2DGraphics();
+		PostMessage( WM_PAINT );
+//	}
 
 	// Start timer again for next round.
 	SetTimer( IDT_TIMER1, 500, NULL );

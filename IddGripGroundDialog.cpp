@@ -19,7 +19,6 @@ IddGripGroundDialog::IddGripGroundDialog(CWnd* pParent /*=NULL*/)
 	: CDialog(IddGripGroundDialog::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(IddGripGroundDialog)
-		// NOTE: the ClassWizard will add member initialization here
 	//}}AFX_DATA_INIT
 }
 
@@ -28,7 +27,6 @@ void IddGripGroundDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(IddGripGroundDialog)
-		// NOTE: the ClassWizard will add DDX and DDV calls here
 	//}}AFX_DATA_MAP
 }
 
