@@ -2,7 +2,7 @@
 
 [General Info]
 Version=1
-LastClass=IddGripGroundDialog
+LastClass=CGripGroundMonitorDlg
 LastTemplate=CDialog
 NewFileInclude1=#include "stdafx.h"
 NewFileInclude2=#include "GripGroundMonitor.h"
@@ -13,10 +13,10 @@ Class2=CGripGroundMonitorDlg
 Class3=CAboutDlg
 
 ResourceCount=4
-Resource1=IDD_GRIPGROUNDMONITOR_DIALOG
+Resource1=IDD_ABOUTBOX
 Resource2=IDR_MAINFRAME
 Class4=IddGripGroundDialog
-Resource3=IDD_ABOUTBOX
+Resource3=IDD_GRIPGROUNDMONITOR_DIALOG
 Resource4=IDD_DIALOG1
 
 [CLS:CGripGroundMonitorApp]
@@ -39,6 +39,7 @@ Type=0
 HeaderFile=GripGroundMonitorDlg.h
 ImplementationFile=GripGroundMonitorDlg.cpp
 Filter=D
+LastObject=CAboutDlg
 
 [DLG:IDD_ABOUTBOX]
 Type=1
@@ -52,7 +53,7 @@ Control4=IDOK,button,1342373889
 [DLG:IDD_GRIPGROUNDMONITOR_DIALOG]
 Type=1
 Class=IddGripGroundDialog
-ControlCount=38
+ControlCount=41
 Control1=IDC_STEPS,listbox,1353777409
 Control2=IDC_SUBJECTID,edit,1350631552
 Control3=IDC_PROTOCOLID,edit,1350631552
@@ -91,6 +92,9 @@ Control35=IDC_XZ,static,1342177287
 Control36=IDC_COP,static,1342177287
 Control37=IDC_STATIC,button,1342177287
 Control38=IDC_STATIC,button,1342177287
+Control39=IDC_TIMESCALE,msctls_trackbar32,1342242821
+Control40=IDC_LIVE,button,1342242819
+Control41=IDC_SCROLLBAR,scrollbar,1342177280
 
 [CLS:IddGripGroundDialog]
 Type=0
@@ -98,7 +102,7 @@ HeaderFile=IddGripGroundDialog.h
 ImplementationFile=IddGripGroundDialog.cpp
 BaseClass=CDialog
 Filter=D
-LastObject=IDABORT
+LastObject=IDC_SCROLLBAR
 VirtualFilter=dWC
 
 [DLG:IDD_DIALOG1]

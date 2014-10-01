@@ -22,8 +22,9 @@
 // Provide the access() function to check for file existance.
 #include <io.h>
 
-// A convenient printf-like message box.
+// Convenient printf-like messages.
 #include "..\Useful\fMessageBox.h"
+#include "..\Useful\fOutputDebugString.h"
 
 // GRIP Script line parser.
 #include "..\Useful\ParseCommaDelimitedLine.h"
@@ -124,6 +125,7 @@ void CGripGroundMonitorDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CGripGroundMonitorDlg)
+	DDX_Control(pDX, IDC_SCROLLBAR, m_scrollbar);
 	DDX_Control(pDX, IDC_ZY, m_zy);
 	DDX_Control(pDX, IDC_XZ, m_xz);
 	DDX_Control(pDX, IDC_COP, m_cop);
@@ -146,6 +148,7 @@ BEGIN_MESSAGE_MAP(CGripGroundMonitorDlg, CDialog)
 	ON_BN_CLICKED(IDC_GOTO, OnGoto)
 	ON_WM_DESTROY()
 	ON_WM_TIMER()
+	ON_WM_HSCROLL()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -243,6 +246,7 @@ int CGripGroundMonitorDlg::GetLatestGripHK( int *subject, int *protocol, int *ta
 	else return ( FALSE );
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	
 int CGripGroundMonitorDlg::GetGripRT( void ) {
 
@@ -306,12 +310,19 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 			exit( -1 );
 		}
 			
+		// Precompute the numbers needed to rotate the force data.
+		double cosd225 = cos( Pi * 22.5 / 180.0 );
+		double sind225 = sin( Pi * 22.5 / 180.0 );
+
 		// Transfer the data to the buffers for plotting.
 		ExtractGripRealtimeDataInfo( &rt, &packet );
 		for ( int slice = 0; slice < RT_SLICES_PER_PACKET && nFrames < MAX_FRAMES; slice++ ) {
 
 			double y, z;
 
+			// Approximate the time, assuming 20 samples per second.
+			// I know that this is not true. A future version will do
+			//  something more clever to compute the real time of each data point.
 			RealMarkerTime[nFrames] = nFrames * .05;
 			if ( rt.dataSlice[slice].manipulandumVisibility ) {
 				ManipulandumPosition[nFrames][X] = (float) rt.dataSlice[slice].position[X] / 10.0;
@@ -325,13 +336,15 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 			}
 			RealAnalogTime[nFrames] = nFrames * 0.05;
 			
+			// The ICD does not say what is the reference frame for the force data.
+			// I've tried to get it right here, but I am not convinced.
+			// Need to test this more thoroughly.
 			GripForce[nFrames] = ( (double) rt.dataSlice[slice].ft[1][X] - (double) rt.dataSlice[slice].ft[0][X] ) / 2.0;
-
 			y = (double) rt.dataSlice[slice].ft[0][Y] + (double) rt.dataSlice[slice].ft[1][Y];
 			z = (double) rt.dataSlice[slice].ft[0][Z] + (double) rt.dataSlice[slice].ft[1][Z];
 			LoadForce[nFrames][X] = (double) rt.dataSlice[slice].ft[0][X] + (double) rt.dataSlice[slice].ft[1][X];
-			LoadForce[nFrames][Y] = cos( Pi * 22.5 / 180.0 ) * y + sin( Pi * 22.5 / 180.0 )  * z;
-			LoadForce[nFrames][Z] = - sin( Pi * 22.5 / 180.0 ) * y + cos( Pi * 22.5 / 180.0 ) * z;
+			LoadForce[nFrames][Y] =   cosd225 * y + sind225 * z;
+			LoadForce[nFrames][Z] = - sind225 * y + cosd225 * z;
 
 			for ( mrk = 0, bit = 0x01; mrk < CODA_MARKERS; mrk++, bit = bit << 1 ) {
 
@@ -357,6 +370,9 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 		fMessageBox( MB_OK, "GripMMI", "Error closing %s after binary read.\nError code: %s", filename, return_code );
 		exit( return_code );
 	}
+
+	fOutputDebugString( "Acquired Frames (max %d): %d\n", MAX_FRAMES, nFrames );
+
 
 	// Check if there were new packets since the last time we read the cache.
 	// Return TRUE if yes, FALSE if no.
@@ -414,11 +430,15 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	Intialize2DGraphics();
 	Draw2DGraphics();
 
-	SetTimer( IDT_TIMER1, 500, NULL );
 
 	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMAX, TRUE, 5 );
 	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMIN, TRUE, 0 );
-//	SendDlgItemMessage( IDC_LIVE, BM_SETCHECK, BST_CHECKED, 0 );
+	SendDlgItemMessage( IDC_LIVE, BM_SETCHECK, BST_CHECKED, 0 );
+	m_scrollbar.SetScrollRange( 0, 1000 );
+	m_scrollbar.SetScrollPos( 1000 );
+
+
+	SetTimer( IDT_TIMER1, 500, NULL );
 
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
@@ -698,14 +718,30 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 
 	OnGoto();
 
-//	if ( SendDlgItemMessage( IDC_LIVE, BM_GETCHECK, 0, 0 ) ) {
+	if ( SendDlgItemMessage( IDC_LIVE, BM_GETCHECK, 0, 0 ) ) {
 		GetGripRT();
-		Draw2DGraphics();
-		PostMessage( WM_PAINT );
-//	}
+		m_scrollbar.SetScrollPos( 1000 );
+	}
+	Draw2DGraphics();
+	PostMessage( WM_PAINT );
 
 	// Start timer again for next round.
-	SetTimer( IDT_TIMER1, 500, NULL );
+	SetTimer( IDT_TIMER1, 200, NULL );
 
 	CDialog::OnTimer(nIDEvent);
+}
+
+void CGripGroundMonitorDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar) 
+{
+	// TODO: Add your message handler code here and/or call default
+	
+	if ( pScrollBar == &m_scrollbar ) {
+		// If the user has touched the scroll bar, turn off live mode.
+		SendDlgItemMessage( IDC_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
+		if ( nSBCode == SB_THUMBTRACK ) {
+			m_scrollbar.SetScrollPos( nPos );
+		}
+	}
+	CDialog::OnHScroll( nSBCode, nPos, pScrollBar );
+
 }

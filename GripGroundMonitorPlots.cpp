@@ -1,6 +1,7 @@
 // GripGroundMonitorPlots.cpp : implementation file
 //
 
+
 #include "stdafx.h"
 #include "GripGroundMonitor.h"
 #include "GripGroundMonitorDlg.h"
@@ -22,14 +23,12 @@
 // Provide the access() function to check for file existance.
 #include <io.h>
 
-// A convenient printf-like message box.
+// Convenient printf-like messages.
 #include "..\Useful\fMessageBox.h"
+#include "..\Useful\fOutputDebugString.h"
 
 // GRIP Script line parser.
 #include "..\Useful\ParseCommaDelimitedLine.h"
-
-// Define this constant to fill the buffer with the specified minutes of data.
-//#define FAKE_DATA 20
 
 // 2D Graphics Package
 #include "useful.h"
@@ -39,6 +38,8 @@
 #include "..\2dGraphics\2dGraphicsLib\Layouts.h"
 #include "..\2dGraphics\2dGraphicsLib\Displays.h" 
 
+// Define this constant to fill the buffer with simulated data.
+// #define FAKE_DATA 
 
 #define X 0
 #define Y 1
@@ -104,7 +105,7 @@ void CGripGroundMonitorDlg::Intialize2DGraphics() {
 	upperForceLimit =  10.0;
 
 	lowerGripLimit =  -2.0;
-	upperGripLimit =  10.0;
+	upperGripLimit =  20.0;
 
 
 
@@ -357,7 +358,7 @@ void CGripGroundMonitorDlg::Draw2DGraphics() {
 	Erase( stripchart_display );
 	Color( stripchart_display, GREY4 );
 
-	static int range[6] = { 40 * 60 * 300, 40 * 60 * 120, 40 * 60 * 60, 40 * 60 * 30, 40 * 60 * 6, 40 * 60 };
+	static int range[6] = { 20 * 60 * 60, 20 * 60 * 30, 20 * 60 * 10, 20 * 60 * 5, 20 * 60, 20 * 30 };
 
 	for ( i = 0; i < LayoutViews( stripchart_layout ); i++ ) {
 
@@ -381,9 +382,9 @@ void CGripGroundMonitorDlg::Draw2DGraphics() {
 	int first_sample = 0;
 	int last_sample = nFrames - 1;
 
+	int last_instant = nFrames * m_scrollbar.GetScrollPos() / 1000;
 	int width = SendDlgItemMessage( IDC_TIMESCALE, TBM_GETPOS );
-	int first_instant = nFrames - range[width];
-	int last_instant = nFrames;
+	int first_instant = last_instant - range[width];
 
 	GraphManipulandumPosition( LayoutViewN( stripchart_layout, 0 ), first_instant, last_instant, first_sample, last_sample );
 	GraphGripForce( LayoutViewN( stripchart_layout, 1 ), first_instant, last_instant, first_sample, last_sample );
@@ -392,8 +393,6 @@ void CGripGroundMonitorDlg::Draw2DGraphics() {
 	GraphVisibility( LayoutViewN( stripchart_layout, 5 ), first_instant, last_instant, first_sample, last_sample );
 
 	PlotManipulandumPosition( first_instant, last_instant, first_sample, last_sample );
-
-	SwapAllDisplays();
 
 }
 
@@ -408,44 +407,46 @@ void CGripGroundMonitorDlg::ResetBuffers( void ) {
 
 	int i, mrk;
 
-	unsigned int frame;
-	nFrames = FAKE_DATA * 60 * 20;
-	for ( frame = 0; frame <= nFrames && frame < MAX_FRAMES; frame++ ) {
+	static int count = 0;
+	count++;
+	unsigned int fill_frames = 60 * 20 * count;
+	for ( nFrames = 0; nFrames <= fill_frames && nFrames < MAX_FRAMES; nFrames++ ) {
 
-		Time[frame] = (float) frame * 0.05;
-		ManipulandumPosition[frame][X] = 30.0 * sin( Time[frame] * Pi * 2.0 / 50.0 );
-		ManipulandumPosition[frame][Y] = 300.0 * cos( Time[frame] * Pi * 2.0 / 75.0 ) + 200.0;
-		ManipulandumPosition[frame][Z] = -75.0 * sin( Time[frame] * Pi * 2.0 / 155.0 ) - 300.0;
+		RealMarkerTime[nFrames] = (float) nFrames * 0.05;
+		ManipulandumPosition[nFrames][X] = 30.0 * sin( RealMarkerTime[nFrames] * Pi * 2.0 / 30.0 );
+		ManipulandumPosition[nFrames][Y] = 300.0 * cos( RealMarkerTime[nFrames] * Pi * 2.0 / 30.0 ) + 200.0;
+		ManipulandumPosition[nFrames][Z] = -75.0 * sin( RealMarkerTime[nFrames] * Pi * 2.0 / 155.0 ) - 300.0;
 
-		GripForce[frame] = fabs( -5.0 * sin( Time[frame] * Pi * 2.0 / 155.0 )  );
+		GripForce[nFrames] = fabs( -5.0 * sin( RealMarkerTime[nFrames] * Pi * 2.0 / 155.0 )  );
 		for ( i = X; i <= Z; i++ ) {
-			LoadForce[frame][i] = ManipulandumPosition[frame][ (i+2) % 3] / 200.0;
+			LoadForce[nFrames][i] = ManipulandumPosition[nFrames][ (i+2) % 3] / 200.0;
 		}
 
 		for ( mrk = 0; mrk <CODA_MARKERS; mrk++ ) {
 
 			int grp = ( mrk >= 8 ? ( mrk >= 16 ? mrk + 20 : mrk + 10 ) : mrk ) + 35;
-			if ( frame == 0 ) MarkerVisibility[frame][mrk] = grp;
+			if ( nFrames == 0 ) MarkerVisibility[nFrames][mrk] = grp;
 			else {
-				if ( MarkerVisibility[frame-1][mrk] != MISSING_CHAR ) {
-					if ( rand() % 1000 < 1 ) MarkerVisibility[frame][mrk] = MISSING_CHAR;
-					else MarkerVisibility[frame][mrk] = grp;
+				if ( MarkerVisibility[nFrames-1][mrk] != MISSING_CHAR ) {
+					if ( rand() % 1000 < 1 ) MarkerVisibility[nFrames][mrk] = MISSING_CHAR;
+					else MarkerVisibility[nFrames][mrk] = grp;
 				}
 				else {
-					if ( rand() % 1000 < 1 ) MarkerVisibility[frame][mrk] = grp;
-					else MarkerVisibility[frame][mrk] = MISSING_CHAR;
+					if ( rand() % 1000 < 1 ) MarkerVisibility[nFrames][mrk] = grp;
+					else MarkerVisibility[nFrames][mrk] = MISSING_CHAR;
 				}
 			}
 		}
 			
-		ManipulandumVisibility[frame] = 0;
+		ManipulandumVisibility[nFrames] = 0;
 		for ( mrk = MANIPULANDUM_FIRST_MARKER; mrk <= MANIPULANDUM_LAST_MARKER; mrk++ ) {
-			if ( MarkerVisibility[frame][mrk] != MISSING_CHAR ) ManipulandumVisibility[frame]++;
+			if ( MarkerVisibility[nFrames][mrk] != MISSING_CHAR ) ManipulandumVisibility[nFrames]++;
 		}
-		if ( ManipulandumVisibility[frame] < 3 ) ManipulandumPosition[frame][X] = ManipulandumPosition[frame][Y] = ManipulandumPosition[frame][Z] = MISSING_FLOAT;
-		ManipulandumVisibility[frame] *= 3;
+		if ( ManipulandumVisibility[nFrames] < 3 ) ManipulandumPosition[nFrames][X] = ManipulandumPosition[nFrames][Y] = ManipulandumPosition[nFrames][Z] = MISSING_FLOAT;
+		ManipulandumVisibility[nFrames] *= 3;
 
 	}
+	fOutputDebugString( "nFrames: %d\n", nFrames );
 
 #endif
 

@@ -18,7 +18,6 @@
 #define IDC_SUBJECTS                    1005
 #define IDC_STEPS                       1006
 #define IDC_TASKS                       1007
-#define IDC_TIMESCALE                   1008
 #define IDC_CURRENT_LINE                1009
 #define IDC_TYPE                        1010
 #define IDC_TASK2                       1011
@@ -34,6 +33,9 @@
 #define IDC_XY                          1022
 #define IDC_XZ                          1023
 #define IDC_COP                         1024
+#define IDC_TIMESCALE                   1026
+#define IDC_LIVE                        1027
+#define IDC_SCROLLBAR                   1028
 #define IDC_PICTURE                     1034
 #define IDC_STATUS_TEXT                 1039
 
@@ -43,7 +45,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        130
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1026
+#define _APS_NEXT_CONTROL_VALUE         1029
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

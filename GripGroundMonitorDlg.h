@@ -102,6 +102,7 @@ public:
 	// Dialog Data
 	//{{AFX_DATA(CGripGroundMonitorDlg)
 	enum { IDD = IDD_GRIPGROUNDMONITOR_DIALOG };
+	CScrollBar	m_scrollbar;
 	CStatic	m_zy;
 	CStatic	m_xz;
 	CStatic	m_cop;
@@ -170,6 +171,7 @@ protected:
 	afx_msg void OnGoto();
 	afx_msg void OnDestroy();
 	afx_msg void OnTimer(UINT nIDEvent);
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
