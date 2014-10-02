@@ -372,6 +372,9 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 	}
 
 	fOutputDebugString( "Acquired Frames (max %d): %d\n", MAX_FRAMES, nFrames );
+	if ( nFrames >= MAX_FRAMES ) {
+		fMessageBox( MB_OK | MB_ICONERROR, "GripMMI", "Internal buffers full." );
+	}
 
 
 	// Check if there were new packets since the last time we read the cache.
@@ -389,7 +392,9 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 BOOL CGripGroundMonitorDlg::OnInitDialog()
 {
 
-	char user_file_path[1024] = "users.dex";
+	HBITMAP logobm = 0;
+	char user_file_path[PATHLENGTH] = "users.dex";
+	char logo_file_path[PATHLENGTH];
 
 	CDialog::OnInitDialog();
 
@@ -430,12 +435,16 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	Intialize2DGraphics();
 	Draw2DGraphics();
 
-
 	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMAX, TRUE, 5 );
 	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMIN, TRUE, 0 );
 	SendDlgItemMessage( IDC_LIVE, BM_SETCHECK, BST_CHECKED, 0 );
 	m_scrollbar.SetScrollRange( 0, 1000 );
 	m_scrollbar.SetScrollPos( 1000 );
+
+	strncpy( logo_file_path, PictureFilenamePrefix, sizeof( logo_file_path )) ;
+	strncat( logo_file_path, "GripLogo.bmp", sizeof( logo_file_path )) ;
+	logobm = (HBITMAP) LoadImage( NULL, logo_file_path, IMAGE_BITMAP, (int) (.5 * 540), (int) (.5 * 405), LR_CREATEDIBSECTION | LR_LOADFROMFILE | LR_VGACOLOR );
+	SendDlgItemMessage( IDC_COP, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM) logobm );
 
 
 	SetTimer( IDT_TIMER1, 500, NULL );

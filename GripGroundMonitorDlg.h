@@ -84,6 +84,9 @@ public:
 	double lowerAccelerationLimit;
 	double upperAccelerationLimit;
 
+	double lowerCopLimit;
+	double upperCopLimit;
+
 	const char *packetBufferPathRoot;
 	const char *scriptDirectory;
 
@@ -94,6 +97,7 @@ public:
 	void GraphAcceleration( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) ;
 	void GraphGripForce( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) ;
 	void GraphVisibility( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) ;
+	void GraphCoP( View view, double start_instant, double stop_instant, int start_frame, int stop_frame );
 	void PlotCOP( int start_frame, int stop_frame );
 
 	int GetLatestGripHK( int *subject, int *protocol, int *task, int *step );

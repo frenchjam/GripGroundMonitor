@@ -12,12 +12,13 @@ Class1=CGripGroundMonitorApp
 Class2=CGripGroundMonitorDlg
 Class3=CAboutDlg
 
-ResourceCount=4
-Resource1=IDD_ABOUTBOX
+ResourceCount=5
+Resource1=IDD_DIALOG1
 Resource2=IDR_MAINFRAME
 Class4=IddGripGroundDialog
-Resource3=IDD_GRIPGROUNDMONITOR_DIALOG
-Resource4=IDD_DIALOG1
+Resource3=IDD_ABOUTBOX
+Resource4=IDD_GRIPGROUNDMONITOR_DIALOG
+Resource5=IDD_MEMWARNING
 
 [CLS:CGripGroundMonitorApp]
 Type=0
@@ -89,7 +90,7 @@ Control32=IDC_STATIC,button,1342177287
 Control33=IDC_ZY,static,1342177287
 Control34=IDC_XY,static,1342177287
 Control35=IDC_XZ,static,1342177287
-Control36=IDC_COP,static,1342177287
+Control36=IDC_COP,static,1342179854
 Control37=IDC_STATIC,button,1342177287
 Control38=IDC_STATIC,button,1342177287
 Control39=IDC_TIMESCALE,msctls_trackbar32,1342242821
@@ -112,4 +113,12 @@ ControlCount=3
 Control1=IDOK,button,1342242817
 Control2=IDC_STATIC,button,1342177287
 Control3=IDC_CURRENT_LINE,static,1342308352
+
+[DLG:IDD_MEMWARNING]
+Type=1
+Class=?
+ControlCount=3
+Control1=IDOK,button,1342242817
+Control2=IDCANCEL,button,1342242816
+Control3=IDC_STATIC,static,1342308352
 

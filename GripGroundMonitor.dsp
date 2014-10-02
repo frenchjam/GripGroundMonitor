@@ -145,6 +145,10 @@ SOURCE=.\res\GripGroundMonitor.ico
 
 SOURCE=.\res\GripGroundMonitor.rc2
 # End Source File
+# Begin Source File
+
+SOURCE=.\GripLogo.bmp
+# End Source File
 # End Group
 # Begin Group "Libraries"
 
