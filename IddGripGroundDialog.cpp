@@ -27,6 +27,7 @@ void IddGripGroundDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(IddGripGroundDialog)
+	DDX_Control(pDX, IDC_TIMESCALE, m_timescale);
 	//}}AFX_DATA_MAP
 }
 

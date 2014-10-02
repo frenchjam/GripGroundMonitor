@@ -66,7 +66,7 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDR_MAINFRAME           ICON    DISCARDABLE     "res\\GripGroundMonitor.ico"
+IDI_GRIP1               ICON    DISCARDABLE     "grip1.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -78,7 +78,7 @@ STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About GripGroundMonitor"
 FONT 8, "MS Sans Serif"
 BEGIN
-    ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
+    ICON            128,IDC_STATIC,11,17,20,20
     LTEXT           "GripGroundMonitor Version 1.0",IDC_STATIC,40,10,119,8,
                     SS_NOPREFIX
     LTEXT           "Copyright (C) 2014",IDC_STATIC,40,25,119,8
@@ -86,9 +86,10 @@ BEGIN
 END
 
 IDD_GRIPGROUNDMONITOR_DIALOG DIALOGEX 800, 0, 779, 556
-STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+STYLE DS_MODALFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | 
+    WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_APPWINDOW
-CAPTION "GRIP Ground Monitoring Window"
+CAPTION "Grip MMI"
 FONT 10, "Courier New"
 BEGIN
     LISTBOX         IDC_STEPS,207,20,245,222,LBS_NOINTEGRALHEIGHT | 
@@ -112,8 +113,8 @@ BEGIN
     GROUPBOX        "Task",IDC_TASK,104,7,97,238
     GROUPBOX        "Protocol",IDC_SESSION_LABEL,7,132,94,113
     GROUPBOX        "Step",IDC_STEP,203,7,255,238
-    CTEXT           "Static",IDC_TYPE,464,230,157,10,0,WS_EX_CLIENTEDGE
-    GROUPBOX        "Message Type",IDC_STATIC,460,218,165,27
+    CTEXT           "Static",IDC_TYPE,464,230,106,10,0,WS_EX_CLIENTEDGE
+    GROUPBOX        "Message Type",IDC_STATIC,460,218,115,27
     GROUPBOX        "Workspace Tablet Display",IDC_TASK2,460,7,165,212
     PUSHBUTTON      "Next",IDC_NEXT_STEP,461,261,27,12,BS_NOTIFY | NOT 
                     WS_TABSTOP,WS_EX_CLIENTEDGE | WS_EX_STATICEDGE
@@ -144,6 +145,9 @@ BEGIN
     CONTROL         "Live",IDC_LIVE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     419,260,30,15
     SCROLLBAR       IDC_SCROLLBAR,102,262,310,10
+    CONTROL         "Live",IDC_SCRIPTS_LIVE,"Button",BS_AUTOCHECKBOX | 
+                    WS_DISABLED | WS_TABSTOP,585,227,30,15
+    GROUPBOX        "",IDC_STATIC,575,218,50,27
 END
 
 IDD_DIALOG1 DIALOGEX 0, 0, 1062, 57

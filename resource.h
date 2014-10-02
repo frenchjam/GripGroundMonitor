@@ -12,6 +12,7 @@
 #define IDD_DIALOG1                     129
 #define IDD_MEMWARNING                  130
 #define IDB_LOGO                        131
+#define IDI_GRIP1                       133
 #define IDC_TASK                        1000
 #define IDC_SUBJECT_LABEL               1001
 #define IDC_SESSION_LABEL               1002
@@ -38,6 +39,7 @@
 #define IDC_TIMESCALE                   1026
 #define IDC_LIVE                        1027
 #define IDC_SCROLLBAR                   1028
+#define IDC_SCRIPTS_LIVE                1029
 #define IDC_PICTURE                     1034
 #define IDC_STATUS_TEXT                 1039
 
@@ -45,7 +47,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        132
+#define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32771
 #define _APS_NEXT_CONTROL_VALUE         1029
 #define _APS_NEXT_SYMED_VALUE           101

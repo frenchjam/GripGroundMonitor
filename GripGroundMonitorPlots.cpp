@@ -198,57 +198,6 @@ void CGripGroundMonitorDlg::Intialize2DGraphics() {
 
 void CGripGroundMonitorDlg::ResetBuffers( void ) {
 	nFrames = 0;
-
-#ifdef FAKE_DATA
-
-	// Simulate some data.
-
-	int i, mrk;
-
-	static int count = 0;
-	count++;
-	unsigned int fill_frames = 60 * 20 * count;
-	for ( nFrames = 0; nFrames <= fill_frames && nFrames < MAX_FRAMES; nFrames++ ) {
-
-		RealMarkerTime[nFrames] = (float) nFrames * 0.05;
-		ManipulandumPosition[nFrames][X] = 30.0 * sin( RealMarkerTime[nFrames] * Pi * 2.0 / 30.0 );
-		ManipulandumPosition[nFrames][Y] = 300.0 * cos( RealMarkerTime[nFrames] * Pi * 2.0 / 30.0 ) + 200.0;
-		ManipulandumPosition[nFrames][Z] = -75.0 * sin( RealMarkerTime[nFrames] * Pi * 2.0 / 155.0 ) - 300.0;
-
-		GripForce[nFrames] = fabs( -5.0 * sin( RealMarkerTime[nFrames] * Pi * 2.0 / 155.0 )  );
-		for ( i = X; i <= Z; i++ ) {
-			LoadForce[nFrames][i] = ManipulandumPosition[nFrames][ (i+2) % 3] / 200.0;
-		}
-
-		for ( mrk = 0; mrk <CODA_MARKERS; mrk++ ) {
-
-			int grp = ( mrk >= 8 ? ( mrk >= 16 ? mrk + 20 : mrk + 10 ) : mrk ) + 35;
-			if ( nFrames == 0 ) MarkerVisibility[nFrames][mrk] = grp;
-			else {
-				if ( MarkerVisibility[nFrames-1][mrk] != MISSING_CHAR ) {
-					if ( rand() % 1000 < 1 ) MarkerVisibility[nFrames][mrk] = MISSING_CHAR;
-					else MarkerVisibility[nFrames][mrk] = grp;
-				}
-				else {
-					if ( rand() % 1000 < 1 ) MarkerVisibility[nFrames][mrk] = grp;
-					else MarkerVisibility[nFrames][mrk] = MISSING_CHAR;
-				}
-			}
-		}
-			
-		ManipulandumVisibility[nFrames] = 0;
-		for ( mrk = MANIPULANDUM_FIRST_MARKER; mrk <= MANIPULANDUM_LAST_MARKER; mrk++ ) {
-			if ( MarkerVisibility[nFrames][mrk] != MISSING_CHAR ) ManipulandumVisibility[nFrames]++;
-		}
-		if ( ManipulandumVisibility[nFrames] < 3 ) ManipulandumPosition[nFrames][X] = ManipulandumPosition[nFrames][Y] = ManipulandumPosition[nFrames][Z] = MISSING_FLOAT;
-		ManipulandumVisibility[nFrames] *= 3;
-
-	}
-	fOutputDebugString( "nFrames: %d\n", nFrames );
-
-#endif
-
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

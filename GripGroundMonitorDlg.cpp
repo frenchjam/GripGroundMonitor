@@ -100,7 +100,7 @@ END_MESSAGE_MAP()
 // CGripGroundMonitorDlg dialog
 
 
-CGripGroundMonitorDlg::CGripGroundMonitorDlg(CWnd* pParent, const char *packet_buffer_root, const char *script_directory )
+CGripGroundMonitorDlg::CGripGroundMonitorDlg(CWnd* pParent, const char *packet_buffer_root, const char *script_directory, bool simulate )
 	: CDialog(CGripGroundMonitorDlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CGripGroundMonitorDlg)
@@ -114,6 +114,7 @@ CGripGroundMonitorDlg::CGripGroundMonitorDlg(CWnd* pParent, const char *packet_b
 
 	packetBufferPathRoot = packet_buffer_root;
 	scriptDirectory = script_directory;
+	simulateData = simulate;
 	strncpy( PictureFilenamePrefix, scriptDirectory, sizeof( PictureFilenamePrefix ) );
 	strncat( PictureFilenamePrefix, "pictures\\", sizeof( PictureFilenamePrefix ) );
 
@@ -125,6 +126,7 @@ void CGripGroundMonitorDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CGripGroundMonitorDlg)
+	DDX_Control(pDX, IDC_TIMESCALE, m_timescale);
 	DDX_Control(pDX, IDC_SCROLLBAR, m_scrollbar);
 	DDX_Control(pDX, IDC_ZY, m_zy);
 	DDX_Control(pDX, IDC_XZ, m_xz);
@@ -386,6 +388,62 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 	else return ( FALSE );
 }
 
+int CGripGroundMonitorDlg::SimulateGripRT ( void ) {
+
+	// Simulate some data to test memory limites and graphics functions.
+	// Each time through it adds more data to the buffers, so as to 
+	//  simulate the progressive arrival of real-time data packets.
+
+	int i, mrk;
+
+	static int count = 0;
+	count++;
+	unsigned int fill_frames = 60 * 20 * count;
+	for ( nFrames = 0; nFrames <= fill_frames && nFrames < MAX_FRAMES; nFrames++ ) {
+
+		RealMarkerTime[nFrames] = (float) nFrames * 0.05;
+		ManipulandumPosition[nFrames][X] = 30.0 * sin( RealMarkerTime[nFrames] * Pi * 2.0 / 30.0 );
+		ManipulandumPosition[nFrames][Y] = 300.0 * cos( RealMarkerTime[nFrames] * Pi * 2.0 / 30.0 ) + 200.0;
+		ManipulandumPosition[nFrames][Z] = -75.0 * sin( RealMarkerTime[nFrames] * Pi * 2.0 / 155.0 ) - 300.0;
+
+		GripForce[nFrames] = fabs( -5.0 * sin( RealMarkerTime[nFrames] * Pi * 2.0 / 155.0 )  );
+		for ( i = X; i <= Z; i++ ) {
+			LoadForce[nFrames][i] = ManipulandumPosition[nFrames][ (i+2) % 3] / 200.0;
+		}
+
+		for ( mrk = 0; mrk <CODA_MARKERS; mrk++ ) {
+
+			int grp = ( mrk >= 8 ? ( mrk >= 16 ? mrk + 20 : mrk + 10 ) : mrk ) + 35;
+			if ( nFrames == 0 ) MarkerVisibility[nFrames][mrk] = grp;
+			else {
+				if ( MarkerVisibility[nFrames-1][mrk] != MISSING_CHAR ) {
+					if ( rand() % 1000 < 1 ) MarkerVisibility[nFrames][mrk] = MISSING_CHAR;
+					else MarkerVisibility[nFrames][mrk] = grp;
+				}
+				else {
+					if ( rand() % 1000 < 1 ) MarkerVisibility[nFrames][mrk] = grp;
+					else MarkerVisibility[nFrames][mrk] = MISSING_CHAR;
+				}
+			}
+		}
+			
+		ManipulandumVisibility[nFrames] = 0;
+		for ( mrk = MANIPULANDUM_FIRST_MARKER; mrk <= MANIPULANDUM_LAST_MARKER; mrk++ ) {
+			if ( MarkerVisibility[nFrames][mrk] != MISSING_CHAR ) ManipulandumVisibility[nFrames]++;
+		}
+		if ( ManipulandumVisibility[nFrames] < 3 ) ManipulandumPosition[nFrames][X] = ManipulandumPosition[nFrames][Y] = ManipulandumPosition[nFrames][Z] = MISSING_FLOAT;
+		ManipulandumVisibility[nFrames] *= 3;
+
+	}
+
+	fOutputDebugString( "nFrames: %d\n", nFrames );
+
+	// Always return as if there were new packets available in the cache.
+	// Maybe this should be changed to return FALSE if the buffers were already full.
+	return( TRUE );
+
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // CGripGroundMonitorDlg message handlers
 
@@ -438,6 +496,7 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMAX, TRUE, 5 );
 	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMIN, TRUE, 0 );
 	SendDlgItemMessage( IDC_LIVE, BM_SETCHECK, BST_CHECKED, 0 );
+	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_CHECKED, 0 );
 	m_scrollbar.SetScrollRange( 0, 1000 );
 	m_scrollbar.SetScrollPos( 1000 );
 
@@ -492,6 +551,7 @@ void CGripGroundMonitorDlg::OnPaint()
 	else
 	{
 		// Tell all the subwindows to redraw themselves.
+		// This causes the PsyPhy2dGraphics displays to redraw.
 		SendMessageToDescendants( WM_PAINT, 0, 0, TRUE, FALSE );
 		// Do what every a dialog window would usually do.
 		CDialog::OnPaint();
@@ -505,6 +565,7 @@ HCURSOR CGripGroundMonitorDlg::OnQueryDragIcon()
 	return (HCURSOR) m_hIcon;
 }
 
+// Update to be performed when the selected user (subject) changes.
 void CGripGroundMonitorDlg::OnSelchangeSubjects() 
 {
 	// Update when a different subject is selected.
@@ -515,11 +576,11 @@ void CGripGroundMonitorDlg::OnSelchangeSubjects()
 	OnSelchangeProtocols();	
 }
 
+// Update to be performed when the selected protocol changes.
 void CGripGroundMonitorDlg::OnSelchangeProtocols() 
 
 {
 	
-	// Update when the selected protocol changes.
 	int protocol = SendDlgItemMessage( IDC_PROTOCOLS, LB_GETCURSEL, 0, 0 );
 	ParseProtocolFile( protocol_file[protocol] );
 	SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, 0, 0 );
@@ -528,9 +589,9 @@ void CGripGroundMonitorDlg::OnSelchangeProtocols()
 	
 }
 
+// Update to be performed when the selected task changes.
 void CGripGroundMonitorDlg::OnSelchangeTasks() 
 {
-	// Update when the selected task changes.
 	int task = SendDlgItemMessage( IDC_TASKS, LB_GETCURSEL, 0, 0 );
 	ParseTaskFile( task_file[task] );
 	// Need to reset the step to the top if the task changes.
@@ -539,11 +600,11 @@ void CGripGroundMonitorDlg::OnSelchangeTasks()
 	OnSelchangeSteps();	
 }
 
+// Update to be performed when the selected step is changed.
 void CGripGroundMonitorDlg::OnSelchangeSteps() 
 {
 	static HBITMAP bm = 0;
 
-	// TODO: Add your control notification handler code here
 	char line[1024];
 	int selected_line = SendDlgItemMessage( IDC_STEPS, LB_GETCURSEL, 0, 0 );
 
@@ -604,9 +665,9 @@ void CGripGroundMonitorDlg::OnSelchangeSteps()
 	}	
 }
 
+// When the 'Next' button is pressed, skip to the next non-comment step.
 void CGripGroundMonitorDlg::OnNextStep() 
 {
-	// Skip to the next non-comment step.
 	int selected_line = SendDlgItemMessage( IDC_STEPS, LB_GETCURSEL, 0, 0 );
 	selected_line++;
 	while ( comment[selected_line] ) selected_line++;
@@ -615,9 +676,9 @@ void CGripGroundMonitorDlg::OnNextStep()
 	
 }
 
+//  When the 'Next' button is double clicked, skip to the next step that is a query or error message.
 void CGripGroundMonitorDlg::OnDoubleclickedNextStep() 
 {
-	// Skip to the next step that is a query or error message.
 	int selected_line = SendDlgItemMessage( IDC_STEPS, LB_GETCURSEL, 0, 0 );
 	while ( comment[selected_line] || type[selected_line] == type_status ) selected_line++;
 	SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, selected_line, 0 );
@@ -625,6 +686,8 @@ void CGripGroundMonitorDlg::OnDoubleclickedNextStep()
 	
 }
 
+// Position the script selections according to the user, protocol, task and step
+//  values that are found in the 4 corresponding text boxes.
 void CGripGroundMonitorDlg::OnGoto() 
 {
 	int i, current_selection;
@@ -690,54 +753,14 @@ void CGripGroundMonitorDlg::OnGoto()
 
 void CGripGroundMonitorDlg::OnDestroy() 
 {
+	// Do whatever a CDialog usually does.
 	CDialog::OnDestroy();
 	
-	// TODO: Add your message handler code here
+	// Free the memory allocated by the PsyPhy2dGraphics system.
 	DestroyViews();
 	DestroyLayouts();
 	DestroyOglDisplays();
 	
-}
-
-void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent) 
-{
-	// Kill the timer so that we don't get retriggered before we finish.
-	// In other words, treat it like a one-shot timer.
-	KillTimer( IDT_TIMER1 );
-	
-	// Get the latest hk packet info.
-	int hk_subject, hk_protocol, hk_task, hk_step;
-	int gui_subject, gui_protocol, gui_task, gui_step;
-	
-	GetLatestGripHK( &hk_subject, &hk_protocol, &hk_task, &hk_step );
-	gui_subject = GetDlgItemInt( IDC_SUBJECTID );
-	if ( (hk_subject != 0) && (hk_subject != gui_subject) ) SetDlgItemInt( IDC_SUBJECTID, hk_subject );
-	gui_protocol = GetDlgItemInt( IDC_PROTOCOLID );
-	if ( (hk_protocol != 0) && (hk_protocol != gui_protocol ) ) SetDlgItemInt( IDC_PROTOCOLID, hk_protocol );
-	gui_task = GetDlgItemInt( IDC_TASKID );
-	gui_step = GetDlgItemInt( IDC_STEPID );
-	if ( hk_task == 0 && hk_step == 0 && gui_step != 0 ) {
-		SetDlgItemInt( IDC_TASKID, gui_task + 1 );
-		SetDlgItemInt( IDC_STEPID, 0 );
-	}
-	else {
-		if ( (hk_task != 0) && (hk_task != gui_task) ) SetDlgItemInt( IDC_TASKID, hk_task );
-		if ( (hk_step != 0) && (hk_step != gui_step ) )  SetDlgItemInt( IDC_STEPID, hk_step );
-	}
-
-	OnGoto();
-
-	if ( SendDlgItemMessage( IDC_LIVE, BM_GETCHECK, 0, 0 ) ) {
-		GetGripRT();
-		m_scrollbar.SetScrollPos( 1000 );
-	}
-	Draw2DGraphics();
-	PostMessage( WM_PAINT );
-
-	// Start timer again for next round.
-	SetTimer( IDT_TIMER1, 200, NULL );
-
-	CDialog::OnTimer(nIDEvent);
 }
 
 void CGripGroundMonitorDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar) 
@@ -747,10 +770,105 @@ void CGripGroundMonitorDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScro
 	if ( pScrollBar == &m_scrollbar ) {
 		// If the user has touched the scroll bar, turn off live mode.
 		SendDlgItemMessage( IDC_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
+		// Process the various scrollbar events.
 		if ( nSBCode == SB_THUMBTRACK ) {
 			m_scrollbar.SetScrollPos( nPos );
 		}
+		else if ( nSBCode == SB_THUMBPOSITION ) {
+			m_scrollbar.SetScrollPos( nPos );
+			Draw2DGraphics();
+			PostMessage( WM_PAINT, 0, 0 );
+		}
+		else if ( nSBCode == SB_LINELEFT ) {
+			m_scrollbar.SetScrollPos( m_scrollbar.GetScrollPos() - 100 );
+			Draw2DGraphics();
+			PostMessage( WM_PAINT, 0, 0 );
+		}
+		else if ( nSBCode == SB_LINERIGHT ) {
+			m_scrollbar.SetScrollPos( m_scrollbar.GetScrollPos() + 100 );
+			Draw2DGraphics();
+			PostMessage( WM_PAINT, 0, 0 );
+		}
+
+
 	}
-	CDialog::OnHScroll( nSBCode, nPos, pScrollBar );
+	// I would like to check here if it is the slider that triggered the event,
+	// but the slider is not a CScrollBar.
+	// For the moment I just assume that if it is not the scroll bar it is the slider.
+	else if ( /* pScrollBar. &m_timescale*/ true ) {
+		// Process the various scrollbar events.
+		if ( nSBCode == SB_THUMBTRACK ) {
+			m_timescale.SetScrollPos( nPos, TRUE );
+		}
+		else if ( nSBCode == SB_THUMBPOSITION ) {
+			m_timescale.SetScrollPos( nPos, TRUE );
+			Draw2DGraphics();
+			PostMessage( WM_PAINT, 0, 0 );
+		}
+	}
+	else CDialog::OnHScroll( nSBCode, nPos, pScrollBar );
 
 }
+
+// A time gets set to go off relatively often.
+// This is where most of the work is done to update with new data.
+void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
+{
+
+	bool new_data_available = false;
+
+	// Kill the timer so that we don't get retriggered before we finish.
+	// In other words, treat it like a one-shot timer.
+	KillTimer( IDT_TIMER1 );
+	
+	if ( SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_GETCHECK, 0, 0 ) ) {
+		// Get the latest hk packet info.
+		int hk_subject, hk_protocol, hk_task, hk_step;
+		int gui_subject, gui_protocol, gui_task, gui_step;
+		GetLatestGripHK( &hk_subject, &hk_protocol, &hk_task, &hk_step );
+
+		// Show the selected subject and protocol in the menus.
+		gui_subject = GetDlgItemInt( IDC_SUBJECTID );
+		if ( (hk_subject != 0) && (hk_subject != gui_subject) ) SetDlgItemInt( IDC_SUBJECTID, hk_subject );
+		gui_protocol = GetDlgItemInt( IDC_PROTOCOLID );
+		if ( (hk_protocol != 0) && (hk_protocol != gui_protocol ) ) SetDlgItemInt( IDC_PROTOCOLID, hk_protocol );
+		gui_task = GetDlgItemInt( IDC_TASKID );
+		gui_step = GetDlgItemInt( IDC_STEPID );
+		// If both task and step go to zero, it is indicative of a task that
+		//  has terminated while the next one has not started yet.
+		// We guess that the subject sees a menu with the next task in the 
+		//  sequence highligthed, so we try to simulate that.
+		if ( hk_task == 0 && hk_step == 0 && gui_step != 0 ) {
+			SetDlgItemInt( IDC_TASKID, gui_task + 1 );
+			SetDlgItemInt( IDC_STEPID, 0 );
+		}
+		// Otherwise, just set the task and step to whatever is sent by Grip.
+		else {
+			if ( (hk_task != 0) && (hk_task != gui_task) ) SetDlgItemInt( IDC_TASKID, hk_task );
+			if ( (hk_step != 0) && (hk_step != gui_step ) )  SetDlgItemInt( IDC_STEPID, hk_step );
+		}
+		// Update everything as if the subject, protocol, task and step had been entered by
+		//  hand and then someone pushes the GoTo button.
+		 OnGoto();
+	}
+
+	// If we are in live mode, get the latest real-time science data and add it to the buffers.
+	if ( SendDlgItemMessage( IDC_LIVE, BM_GETCHECK, 0, 0 ) ) {
+		// In Live mode we plot up to the latest data.
+		// So position the scrollbar slider to reflect that.
+		m_scrollbar.SetScrollPos( 1000 );
+		// Get the data from the packet cache, or simulate it.
+		if ( simulateData ) new_data_available = SimulateGripRT();
+		else new_data_available = GetGripRT();
+		if ( new_data_available ) {
+			Draw2DGraphics();
+		}
+		PostMessage( WM_PAINT );
+	}
+
+	// Start timer again for next round.
+	SetTimer( IDT_TIMER1, 200, NULL );
+
+	CDialog::OnTimer(nIDEvent);
+}
+

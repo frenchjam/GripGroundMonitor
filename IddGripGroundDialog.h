@@ -19,6 +19,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(IddGripGroundDialog)
 	enum { IDD = IDD_GRIPGROUNDMONITOR_DIALOG };
+	CSliderCtrl	m_timescale;
 	//}}AFX_DATA
 
 

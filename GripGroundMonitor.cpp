@@ -7,6 +7,8 @@
 
 #include <shellapi.h>
 
+#include "..\Useful\fMessageBox.h"
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -75,6 +77,7 @@ BOOL CGripGroundMonitorApp::InitInstance()
 	// Second is the directory containing the GRIP scripts.
 	if ( __argc > 2 ) strcpy( scriptDirectory, __argv[2] );
 
+	// fMessageBox( MB_OK, "Test", "Args (%d): %s %s", __argc, __argv[1], __argv[2] );
 
 	// Run the dialog with the specified cache and script directories.
 	CGripGroundMonitorDlg *dlg = new CGripGroundMonitorDlg( NULL, packetPathRoot, scriptDirectory );

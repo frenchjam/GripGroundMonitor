@@ -43,7 +43,7 @@ class CGripGroundMonitorDlg : public CDialog
 {
 // Construction
 public:
-	CGripGroundMonitorDlg(CWnd* pParent = NULL, const char *packet_buffer_root = ".\\", const char *script_path = ".\\" );	// standard constructor
+	CGripGroundMonitorDlg(CWnd* pParent = NULL, const char *packet_buffer_root = ".\\", const char *script_path = ".\\", bool simulate = false );	// standard constructor
 
 	// Routines for parsing the GRIP scripts.
 
@@ -102,10 +102,14 @@ public:
 
 	int GetLatestGripHK( int *subject, int *protocol, int *task, int *step );
 	int GetGripRT( void );
+	int SimulateGripRT ( void );
+
+	bool simulateData;;
 
 	// Dialog Data
 	//{{AFX_DATA(CGripGroundMonitorDlg)
 	enum { IDD = IDD_GRIPGROUNDMONITOR_DIALOG };
+	CSliderCtrl	m_timescale;
 	CScrollBar	m_scrollbar;
 	CStatic	m_zy;
 	CStatic	m_xz;
