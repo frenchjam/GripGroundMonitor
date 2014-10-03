@@ -26,30 +26,26 @@
 #include "..\Useful\fMessageBox.h"
 #include "..\Useful\fOutputDebugString.h"
 
+// Some useful constants
+#include "..\Useful\Useful.h"
+
+
 // GRIP Script line parser.
 #include "..\Useful\ParseCommaDelimitedLine.h"
 
 // Define this constant to fill the buffer with the specified minutes of data.
 #define FAKE_DATA 20
 
-#define X 0
-#define Y 1
-#define Z 2
-
-#define ROLL	0
-#define PITCH	1
-#define YAW		2
 
 #define IDT_TIMER1 1001
-
-#define MISSING_FLOAT	9999.9999
-#define MISSING_CHAR	127
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
 #endif
+
+int CGripGroundMonitorDlg::windowSpan[SPAN_VALUES] = { 20 * 60 * 60, 20 * 60 * 30, 20 * 60 * 10, 20 * 60 * 5, 20 * 60, 20 * 30 };
 
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
@@ -109,8 +105,8 @@ CGripGroundMonitorDlg::CGripGroundMonitorDlg(CWnd* pParent, const char *packet_b
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
 	type_status = "Status (script will continue)";
-	type_query =  "Query  (waiting for response)";
-	type_alert =  "Alert  (displayed only if error)";
+	type_query =  "Query (waiting for response)";
+	type_alert =  "Alert (seen only if error)";
 
 	packetBufferPathRoot = packet_buffer_root;
 	scriptDirectory = script_directory;
@@ -185,6 +181,13 @@ int CGripGroundMonitorDlg::GetLatestGripHK( int *subject, int *protocol, int *ta
 	EPMTelemetryHeaderInfo epmHeader;
 	GripHealthAndStatusInfo hk;
 
+	struct {
+		int user;
+		int protocol;
+		int task;
+		int step;
+	} non_zero = {0, 0, 0, 0};
+
 	char filename[1024];
 
 	CreateGripPacketCacheFilename( filename, sizeof( filename ), GRIP_HK_BULK_PACKET, packetBufferPathRoot );
@@ -212,18 +215,31 @@ int CGripGroundMonitorDlg::GetLatestGripHK( int *subject, int *protocol, int *ta
 
 	// Read in all of the data packets in the file.
 	packets_read = 0;
-	while ( hkPacketLengthInBytes == (bytes_read = _read( fid, &packet, hkPacketLengthInBytes )) ) {
-		packets_read++;
+	while ( true ) {
+		bytes_read = _read( fid, &packet, hkPacketLengthInBytes );
+		// Return less than zero means read error.
 		if ( bytes_read < 0 ) {
 			fMessageBox( MB_OK, "GripMMI", "Error reading from %s.", filename );
 			exit( -1 );
 		}
+		// Return less than expected number of bytes means we have read all packets.
+		if ( bytes_read < hkPacketLengthInBytes ) break;
+
+		packets_read++;
 		// Check that it is a valid GRIP packet. It would be strange if it was not.
 		ExtractEPMTelemetryHeaderInfo( &epmHeader, &packet );
 		if ( epmHeader.epmSyncMarker != EPM_TELEMETRY_SYNC_VALUE || epmHeader.TMIdentifier != GRIP_HK_ID ) {
 			fMessageBox( MB_OK, "GripMMIlite", "Unrecognized packet from %s.", filename );
 			exit( -1 );
 		}
+		// When the subject exits a task, the task counter goes to zero, but the subject
+		//  sees the menu item for the next task highlighted. So we try to guess what 
+		//  the next step is going to be. To do that, we have to look for transitions to 0, 0;
+		ExtractGripHealthAndStatusInfo( &hk, &packet );
+		if ( hk.user != 0 ) non_zero.user = hk.user;
+		if ( hk.protocol != 0 ) non_zero.protocol = hk.protocol;
+		if ( hk.task != 0 ) non_zero.task = hk.task;
+
 	}
 	// Finished reading. Close the file and check for errors.
 	return_code = _close( fid );
@@ -233,9 +249,9 @@ int CGripGroundMonitorDlg::GetLatestGripHK( int *subject, int *protocol, int *ta
 	}
 
 	ExtractGripHealthAndStatusInfo( &hk, &packet );
-	*subject = hk.user;
-	*protocol = hk.protocol;
-	*task = hk.task;
+	*subject = ( hk.user == 0 ? non_zero.user : hk.user );
+	*protocol = ( hk.protocol == 0 ? non_zero.protocol : hk.protocol );
+	*task = ( hk.task == 0 ? non_zero.task + 1 : hk.task );
 	*step = hk.step;
 
 
@@ -312,15 +328,9 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 			exit( -1 );
 		}
 			
-		// Precompute the numbers needed to rotate the force data.
-		double cosd225 = cos( Pi * 22.5 / 180.0 );
-		double sind225 = sin( Pi * 22.5 / 180.0 );
-
 		// Transfer the data to the buffers for plotting.
 		ExtractGripRealtimeDataInfo( &rt, &packet );
 		for ( int slice = 0; slice < RT_SLICES_PER_PACKET && nFrames < MAX_FRAMES; slice++ ) {
-
-			double y, z;
 
 			// Approximate the time, assuming 20 samples per second.
 			// I know that this is not true. A future version will do
@@ -341,12 +351,10 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 			// The ICD does not say what is the reference frame for the force data.
 			// I've tried to get it right here, but I am not convinced.
 			// Need to test this more thoroughly.
-			GripForce[nFrames] = ( (double) rt.dataSlice[slice].ft[1][X] - (double) rt.dataSlice[slice].ft[0][X] ) / 2.0;
-			y = (double) rt.dataSlice[slice].ft[0][Y] + (double) rt.dataSlice[slice].ft[1][Y];
-			z = (double) rt.dataSlice[slice].ft[0][Z] + (double) rt.dataSlice[slice].ft[1][Z];
-			LoadForce[nFrames][X] = (double) rt.dataSlice[slice].ft[0][X] + (double) rt.dataSlice[slice].ft[1][X];
-			LoadForce[nFrames][Y] =   cosd225 * y + sind225 * z;
-			LoadForce[nFrames][Z] = - sind225 * y + cosd225 * z;
+			GripForce[nFrames] = ComputeGripForce( rt.dataSlice[slice].ft[0].force, rt.dataSlice[slice].ft[1].force );
+			LoadForceMagnitude[nFrames] = ComputeLoadForce( LoadForce[nFrames], rt.dataSlice[slice].ft[0].force, rt.dataSlice[slice].ft[1].force );
+			ComputeCoP( CenterOfPressure[0][nFrames], rt.dataSlice[slice].ft[0].force, rt.dataSlice[slice].ft[0].torque );
+			ComputeCoP( CenterOfPressure[1][nFrames], rt.dataSlice[slice].ft[1].force, rt.dataSlice[slice].ft[1].torque );
 
 			for ( mrk = 0, bit = 0x01; mrk < CODA_MARKERS; mrk++, bit = bit << 1 ) {
 
@@ -493,7 +501,7 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	Intialize2DGraphics();
 	Draw2DGraphics();
 
-	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMAX, TRUE, 5 );
+	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMAX, TRUE, SPAN_VALUES - 1 );
 	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMIN, TRUE, 0 );
 	SendDlgItemMessage( IDC_LIVE, BM_SETCHECK, BST_CHECKED, 0 );
 	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_CHECKED, 0 );
@@ -703,7 +711,7 @@ void CGripGroundMonitorDlg::OnGoto()
 		if ( subjectID[i] == subject ) break;
 	}
 	if ( subjectID[i] != subject ) {
-		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Subject ID %3d not recognized.\nReverting to previous subject.", subject );
+//		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Subject ID %3d not recognized.\nReverting to previous subject.", subject );
 		SetDlgItemInt( IDC_SUBJECTID, subjectID[current_selection] );
 	}
 	else if ( i != current_selection ) {
@@ -716,7 +724,7 @@ void CGripGroundMonitorDlg::OnGoto()
 		if ( protocolID[i] == protocol ) break;
 	}
 	if ( protocolID[i] != protocol ) {
-		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Protocol ID %3d not recognized.\nReverting to previous protocol.", protocol );
+//		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Protocol ID %3d not recognized.\nReverting to previous protocol.", protocol );
 		SetDlgItemInt( IDC_PROTOCOLID, protocolID[current_selection] );
 	}
 	else if ( i != current_selection ) {
@@ -780,12 +788,18 @@ void CGripGroundMonitorDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScro
 			PostMessage( WM_PAINT, 0, 0 );
 		}
 		else if ( nSBCode == SB_LINELEFT ) {
-			m_scrollbar.SetScrollPos( m_scrollbar.GetScrollPos() - 100 );
+			// Shift half the current window frame backward in time.
+			int width_item = SendDlgItemMessage( IDC_TIMESCALE, TBM_GETPOS );
+			int width = windowSpan[width_item];
+			m_scrollbar.SetScrollPos( m_scrollbar.GetScrollPos() - width * 1000 / nFrames / 2 );
 			Draw2DGraphics();
 			PostMessage( WM_PAINT, 0, 0 );
 		}
 		else if ( nSBCode == SB_LINERIGHT ) {
-			m_scrollbar.SetScrollPos( m_scrollbar.GetScrollPos() + 100 );
+			// Shift half the current window frame forward in time.
+			int width_item = SendDlgItemMessage( IDC_TIMESCALE, TBM_GETPOS );
+			int width = windowSpan[width_item];
+			m_scrollbar.SetScrollPos( m_scrollbar.GetScrollPos() + width * 1000 / nFrames / 2 );
 			Draw2DGraphics();
 			PostMessage( WM_PAINT, 0, 0 );
 		}
@@ -829,24 +843,13 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 
 		// Show the selected subject and protocol in the menus.
 		gui_subject = GetDlgItemInt( IDC_SUBJECTID );
-		if ( (hk_subject != 0) && (hk_subject != gui_subject) ) SetDlgItemInt( IDC_SUBJECTID, hk_subject );
+		if ( hk_subject != gui_subject ) SetDlgItemInt( IDC_SUBJECTID, hk_subject );
 		gui_protocol = GetDlgItemInt( IDC_PROTOCOLID );
-		if ( (hk_protocol != 0) && (hk_protocol != gui_protocol ) ) SetDlgItemInt( IDC_PROTOCOLID, hk_protocol );
+		if ( hk_protocol != gui_protocol ) SetDlgItemInt( IDC_PROTOCOLID, hk_protocol );
 		gui_task = GetDlgItemInt( IDC_TASKID );
+		if ( hk_task != gui_task ) SetDlgItemInt( IDC_TASKID, hk_task );
 		gui_step = GetDlgItemInt( IDC_STEPID );
-		// If both task and step go to zero, it is indicative of a task that
-		//  has terminated while the next one has not started yet.
-		// We guess that the subject sees a menu with the next task in the 
-		//  sequence highligthed, so we try to simulate that.
-		if ( hk_task == 0 && hk_step == 0 && gui_step != 0 ) {
-			SetDlgItemInt( IDC_TASKID, gui_task + 1 );
-			SetDlgItemInt( IDC_STEPID, 0 );
-		}
-		// Otherwise, just set the task and step to whatever is sent by Grip.
-		else {
-			if ( (hk_task != 0) && (hk_task != gui_task) ) SetDlgItemInt( IDC_TASKID, hk_task );
-			if ( (hk_step != 0) && (hk_step != gui_step ) )  SetDlgItemInt( IDC_STEPID, hk_step );
-		}
+		if ( hk_step != gui_step )  SetDlgItemInt( IDC_STEPID, hk_step );
 		// Update everything as if the subject, protocol, task and step had been entered by
 		//  hand and then someone pushes the GoTo button.
 		 OnGoto();

@@ -8,6 +8,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#include "..\Useful\VectorsMixin.h"
+
 // 2D Graphics Package
 #include "useful.h"
 #include "..\2dGraphics\2dGraphicsLib\OglDisplayInterface.h"
@@ -15,6 +17,8 @@
 #include "..\2dGraphics\2dGraphicsLib\Views.h"
 #include "..\2dGraphics\2dGraphicsLib\Layouts.h"
 #include "..\2dGraphics\2dGraphicsLib\Displays.h" 
+
+#include "..\Grip\DexAnalogMixin.h"
 
 // Array dimensions for the GRIP script elements.
 #define MAX_STEPS				4096
@@ -28,6 +32,7 @@
 #define MANIPULANDUM_LAST_MARKER  7
 
 #define STRIPCHARTS	6
+#define SPAN_VALUES	6
 
 // A convenient macro to hand message/picture pairs.
 #define add_to_message_pair(x,y,z) { strcpy( message[lines], y ); if ( z ) strcpy( picture[lines], z ); else strcpy( picture[lines], "" ); type[lines] = type_alert; }
@@ -39,11 +44,11 @@
 /////////////////////////////////////////////////////////////////////////////
 // CGripGroundMonitorDlg dialog
 
-class CGripGroundMonitorDlg : public CDialog
+class CGripGroundMonitorDlg : public CDialog, DexAnalogMixin
 {
 // Construction
 public:
-	CGripGroundMonitorDlg(CWnd* pParent = NULL, const char *packet_buffer_root = ".\\", const char *script_path = ".\\", bool simulate = false );	// standard constructor
+	CGripGroundMonitorDlg(CWnd* pParent = NULL, const char *packet_buffer_root	 = ".\\", const char *script_path = ".\\", bool simulate = false );	// standard constructor
 
 	// Routines for parsing the GRIP scripts.
 
@@ -63,10 +68,11 @@ public:
 	static float	CompressedAnalogTime[MAX_FRAMES];
 	static float	ManipulandumPosition[MAX_FRAMES][3];
 	static float	ManipulandumOrientation[MAX_FRAMES][3];
-	static float	LoadForce[MAX_FRAMES][3];
+	static Vector3	LoadForce[MAX_FRAMES];
+	static double	LoadForceMagnitude[MAX_FRAMES];
 	static float	Acceleration[MAX_FRAMES][3];
 	static float	GripForce[MAX_FRAMES];
-	static float	CenterOfPressure[MAX_FRAMES][2];
+	static Vector3	CenterOfPressure[2][MAX_FRAMES];
 	static char		MarkerVisibility[MAX_FRAMES][CODA_MARKERS];
 	static char		ManipulandumVisibility[MAX_FRAMES];
 
@@ -87,6 +93,8 @@ public:
 	double lowerCopLimit;
 	double upperCopLimit;
 
+	static int windowSpan[SPAN_VALUES];
+
 	const char *packetBufferPathRoot;
 	const char *scriptDirectory;
 
@@ -98,13 +106,13 @@ public:
 	void GraphGripForce( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) ;
 	void GraphVisibility( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) ;
 	void GraphCoP( View view, double start_instant, double stop_instant, int start_frame, int stop_frame );
-	void PlotCOP( int start_frame, int stop_frame );
+	void PlotCoP( double start_window, double stop_window, int start_frame, int stop_frame );
 
 	int GetLatestGripHK( int *subject, int *protocol, int *task, int *step );
 	int GetGripRT( void );
 	int SimulateGripRT ( void );
 
-	bool simulateData;;
+	bool simulateData;
 
 	// Dialog Data
 	//{{AFX_DATA(CGripGroundMonitorDlg)

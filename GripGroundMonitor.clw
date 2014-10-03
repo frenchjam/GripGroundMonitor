@@ -13,11 +13,11 @@ Class2=CGripGroundMonitorDlg
 Class3=CAboutDlg
 
 ResourceCount=5
-Resource1=IDD_ABOUTBOX
+Resource1=IDD_GRIPGROUNDMONITOR_DIALOG
 Resource2=IDR_MAINFRAME
 Class4=IddGripGroundDialog
-Resource3=IDD_DIALOG1
-Resource4=IDD_GRIPGROUNDMONITOR_DIALOG
+Resource3=IDD_ABOUTBOX
+Resource4=IDD_DIALOG1
 Resource5=IDD_MEMWARNING
 
 [CLS:CGripGroundMonitorApp]
@@ -97,7 +97,7 @@ Control38=IDC_STATIC,button,1342177287
 Control39=IDC_TIMESCALE,msctls_trackbar32,1342242821
 Control40=IDC_LIVE,button,1342242819
 Control41=IDC_SCROLLBAR,scrollbar,1342177280
-Control42=IDC_SCRIPTS_LIVE,button,1476460547
+Control42=IDC_SCRIPTS_LIVE,button,1342242819
 Control43=IDC_STATIC,button,1342177287
 
 [CLS:IddGripGroundDialog]

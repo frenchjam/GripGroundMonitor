@@ -119,6 +119,10 @@ SOURCE=.\StdAfx.cpp
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
+SOURCE=..\Grip\DexAnalogMixin.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\GripGroundMonitor.h
 # End Source File
 # Begin Source File
