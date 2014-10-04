@@ -41,8 +41,48 @@
 #define IDC_SCROLLBAR                   1028
 #define IDC_SCRIPTS_LIVE                1029
 #define IDC_FILTERING                   1031
+#define IDC_RADIO1                      1032
+#define IDC_RADIO2                      1033
 #define IDC_PICTURE                     1034
+#define IDC_RADIO3                      1035
+#define IDC_RADIO4                      1037
+#define IDC_RADIO5                      1038
 #define IDC_STATUS_TEXT                 1039
+#define IDC_RADIO6                      1040
+#define IDC_RADIO7                      1041
+#define IDC_RADIO8                      1042
+#define IDC_RADIO9                      1043
+#define IDC_RADIO10                     1044
+#define IDC_RADIO11                     1045
+#define IDC_RADIO12                     1046
+#define IDC_RADIO13                     1047
+#define IDC_RADIO14                     1048
+#define IDC_RADIO15                     1049
+#define IDC_RADIO16                     1053
+#define IDC_RADIO17                     1054
+#define IDC_RADIO18                     1055
+#define IDC_RADIO19                     1056
+#define IDC_RADIO20                     1057
+#define IDC_RADIO21                     1058
+#define IDC_RADIO22                     1059
+#define IDC_RADIO23                     1060
+#define IDC_RADIO24                     1061
+#define IDC_RADIO25                     1062
+#define IDC_RADIO26                     1063
+#define IDC_RADIO27                     1064
+#define IDC_RADIO28                     1065
+#define IDC_RADIO29                     1066
+#define IDC_RADIO30                     1067
+#define IDC_RADIO31                     1068
+#define IDC_RADIO32                     1069
+#define IDC_RADIO33                     1070
+#define IDC_RADIO34                     1071
+#define IDC_RADIO35                     1072
+#define IDC_RADIO36                     1073
+#define IDC_RADIO37                     1074
+#define IDC_RADIO38                     1075
+#define IDC_RADIO39                     1076
+#define IDC_RADIO40                     1077
 
 // Next default values for new objects
 // 
@@ -50,7 +90,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1032
+#define _APS_NEXT_CONTROL_VALUE         1033
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
