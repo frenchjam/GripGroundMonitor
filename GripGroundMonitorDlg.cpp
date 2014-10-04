@@ -788,18 +788,42 @@ void CGripGroundMonitorDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScro
 			PostMessage( WM_PAINT, 0, 0 );
 		}
 		else if ( nSBCode == SB_LINELEFT ) {
-			// Shift half the current window frame backward in time.
+			// Shift the current window frame backward in time.
 			int width_item = SendDlgItemMessage( IDC_TIMESCALE, TBM_GETPOS );
 			int width = windowSpan[width_item];
+			// The scrollbar runs from 0 to 1000. Here we compute the width of 
+			//  the viewing window in scrollbar units and shoft to the left
+			//  by one half of that distance.
 			m_scrollbar.SetScrollPos( m_scrollbar.GetScrollPos() - width * 1000 / nFrames / 2 );
 			Draw2DGraphics();
 			PostMessage( WM_PAINT, 0, 0 );
 		}
 		else if ( nSBCode == SB_LINERIGHT ) {
-			// Shift half the current window frame forward in time.
+			// Shift the current window frame forward in time.
 			int width_item = SendDlgItemMessage( IDC_TIMESCALE, TBM_GETPOS );
 			int width = windowSpan[width_item];
+			// The scrollbar runs from 0 to 1000. Here we compute the width of 
+			//  the viewing window in scrollbar units and shoft to the left
+			//  by one half of that distance.
 			m_scrollbar.SetScrollPos( m_scrollbar.GetScrollPos() + width * 1000 / nFrames / 2 );
+			Draw2DGraphics();
+			PostMessage( WM_PAINT, 0, 0 );
+		}
+		else if ( nSBCode == SB_PAGELEFT ) {
+			// Shift so that we see only the first window of data.
+			int width_item = SendDlgItemMessage( IDC_TIMESCALE, TBM_GETPOS );
+			int width = windowSpan[width_item];
+			// The 975 below means that we position the left edge of the
+			//  window a little bit earlier in time. This shows some
+			//  blank traces before the start of recording, making it 
+			//  intuitively obvious that we are at the earliest part
+			//  of the recorded data.
+			m_scrollbar.SetScrollPos( width * 975 / nFrames );
+			Draw2DGraphics();
+			PostMessage( WM_PAINT, 0, 0 );
+		}
+		else if ( nSBCode == SB_PAGERIGHT ) {
+			m_scrollbar.SetScrollPos( 1000 );
 			Draw2DGraphics();
 			PostMessage( WM_PAINT, 0, 0 );
 		}
@@ -819,6 +843,12 @@ void CGripGroundMonitorDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScro
 			Draw2DGraphics();
 			PostMessage( WM_PAINT, 0, 0 );
 		}
+		// On any other slider event just refresh the sceen.
+		else {
+			Draw2DGraphics();
+			PostMessage( WM_PAINT, 0, 0 );
+		}
+
 	}
 	else CDialog::OnHScroll( nSBCode, nPos, pScrollBar );
 
@@ -857,16 +887,20 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 
 	// If we are in live mode, get the latest real-time science data and add it to the buffers.
 	if ( SendDlgItemMessage( IDC_LIVE, BM_GETCHECK, 0, 0 ) ) {
+
 		// In Live mode we plot up to the latest data.
 		// So position the scrollbar slider to reflect that.
 		m_scrollbar.SetScrollPos( 1000 );
+
 		// Get the data from the packet cache, or simulate it.
-		if ( simulateData ) new_data_available = SimulateGripRT();
-		else new_data_available = GetGripRT();
+		if ( simulateData ) new_data_available = !( 0 == SimulateGripRT());
+		else new_data_available = (bool) !( 0 == GetGripRT());
+		// If there is new data, replot all of it.
 		if ( new_data_available ) {
 			Draw2DGraphics();
+			PostMessage( WM_PAINT );
 		}
-		PostMessage( WM_PAINT );
+
 	}
 
 	// Start timer again for next round.
