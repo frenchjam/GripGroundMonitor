@@ -40,6 +40,7 @@
 #define IDC_LIVE                        1027
 #define IDC_SCROLLBAR                   1028
 #define IDC_SCRIPTS_LIVE                1029
+#define IDC_FILTERING                   1031
 #define IDC_PICTURE                     1034
 #define IDC_STATUS_TEXT                 1039
 
@@ -49,7 +50,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1029
+#define _APS_NEXT_CONTROL_VALUE         1032
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

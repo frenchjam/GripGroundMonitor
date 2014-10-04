@@ -50,7 +50,7 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 float CGripGroundMonitorDlg::ManipulandumOrientation[MAX_FRAMES][3];
-float CGripGroundMonitorDlg::ManipulandumPosition[MAX_FRAMES][3];
+Vector3 CGripGroundMonitorDlg::ManipulandumPosition[MAX_FRAMES];
 float CGripGroundMonitorDlg::Acceleration[MAX_FRAMES][3];
 float CGripGroundMonitorDlg::GripForce[MAX_FRAMES];
 Vector3 CGripGroundMonitorDlg::LoadForce[MAX_FRAMES];
@@ -212,7 +212,7 @@ void CGripGroundMonitorDlg::GraphManipulandumPosition( View view, double start_i
 	// Plot all 3 components of the manipulandum position in the same view;
 	for ( int i = 0; i < 3; i++ ) {
 		ViewSelectColor( view, i );
-		if ( stop_frame > start_frame ) ViewPlotAvailableFloats( view, &ManipulandumPosition[0][i], start_frame, stop_frame, sizeof( *ManipulandumPosition ), MISSING_FLOAT );
+		if ( stop_frame > start_frame ) ViewPlotAvailableDoubles( view, &ManipulandumPosition[0][i], start_frame, stop_frame, sizeof( *ManipulandumPosition ), MISSING_DOUBLE );
 	}
 
 }
@@ -378,7 +378,7 @@ void CGripGroundMonitorDlg::PlotManipulandumPosition( double start_instant, doub
 		ViewSetYLimits( view, lowerPositionLimitSpecific[pair[i].ordinate], upperPositionLimitSpecific[pair[i].ordinate] );
 		ViewMakeSquare( view );
 		ViewSelectColor( view, i );
-		if ( stop_frame > start_frame ) ViewXYPlotAvailableFloats( view, &ManipulandumPosition[0][pair[i].abscissa], &ManipulandumPosition[0][pair[i].ordinate], start_frame, stop_frame, sizeof( *ManipulandumPosition ), sizeof( *ManipulandumPosition ), MISSING_FLOAT );
+		if ( stop_frame > start_frame ) ViewXYPlotAvailableDoubles( view, &ManipulandumPosition[0][pair[i].abscissa], &ManipulandumPosition[0][pair[i].ordinate], start_frame, stop_frame, sizeof( *ManipulandumPosition ), sizeof( *ManipulandumPosition ), MISSING_DOUBLE );
 	}
 
 }

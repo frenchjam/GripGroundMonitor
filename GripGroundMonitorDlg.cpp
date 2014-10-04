@@ -337,14 +337,15 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 			//  something more clever to compute the real time of each data point.
 			RealMarkerTime[nFrames] = nFrames * .05;
 			if ( rt.dataSlice[slice].manipulandumVisibility ) {
-				ManipulandumPosition[nFrames][X] = (float) rt.dataSlice[slice].position[X] / 10.0;
-				ManipulandumPosition[nFrames][Y] = (float) rt.dataSlice[slice].position[Y] / 10.0;
-				ManipulandumPosition[nFrames][Z] = (float) rt.dataSlice[slice].position[Z] / 10.0;
+				ManipulandumPosition[nFrames][X] = rt.dataSlice[slice].position[X] / 10.0;
+				ManipulandumPosition[nFrames][Y] = rt.dataSlice[slice].position[Y] / 10.0;
+				ManipulandumPosition[nFrames][Z] = rt.dataSlice[slice].position[Z] / 10.0;
+				FilterManipulandumPosition( ManipulandumPosition[nFrames] );
 			}
 			else {
-				ManipulandumPosition[nFrames][X] = MISSING_FLOAT;
-				ManipulandumPosition[nFrames][Y] = MISSING_FLOAT;
-				ManipulandumPosition[nFrames][Z] = MISSING_FLOAT;
+				ManipulandumPosition[nFrames][X] = MISSING_DOUBLE;
+				ManipulandumPosition[nFrames][Y] = MISSING_DOUBLE;
+				ManipulandumPosition[nFrames][Z] = MISSING_DOUBLE;
 			}
 			RealAnalogTime[nFrames] = nFrames * 0.05;
 			
@@ -352,9 +353,14 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 			// I've tried to get it right here, but I am not convinced.
 			// Need to test this more thoroughly.
 			GripForce[nFrames] = ComputeGripForce( rt.dataSlice[slice].ft[0].force, rt.dataSlice[slice].ft[1].force );
-			LoadForceMagnitude[nFrames] = ComputeLoadForce( LoadForce[nFrames], rt.dataSlice[slice].ft[0].force, rt.dataSlice[slice].ft[1].force );
-			ComputeCoP( CenterOfPressure[0][nFrames], rt.dataSlice[slice].ft[0].force, rt.dataSlice[slice].ft[0].torque );
-			ComputeCoP( CenterOfPressure[1][nFrames], rt.dataSlice[slice].ft[1].force, rt.dataSlice[slice].ft[1].torque );
+			GripForce[nFrames] = FilterGripForce( GripForce[nFrames] );
+			ComputeLoadForce( LoadForce[nFrames], rt.dataSlice[slice].ft[0].force, rt.dataSlice[slice].ft[1].force );
+			LoadForceMagnitude[nFrames] = FilterLoadForce( LoadForce[nFrames] );
+
+			for ( int ati = 0; ati < N_FORCE_TRANSDUCERS; ati++ ) {
+				double cop_distance = ComputeCoP( CenterOfPressure[ati][nFrames], rt.dataSlice[slice].ft[ati].force, rt.dataSlice[slice].ft[ati].torque );
+				if ( cop_distance >= 0.0 ) FilterCoP( ati, CenterOfPressure[ati][nFrames] );
+			}
 
 			for ( mrk = 0, bit = 0x01; mrk < CODA_MARKERS; mrk++, bit = bit << 1 ) {
 
@@ -860,6 +866,11 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 {
 
 	bool new_data_available = false;
+	bool live = false;
+	bool refilter = false;
+
+	long filtering;
+	static long previous_filtering_setting = -1;
 
 	// Kill the timer so that we don't get retriggered before we finish.
 	// In other words, treat it like a one-shot timer.
@@ -885,22 +896,35 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 		 OnGoto();
 	}
 
-	// If we are in live mode, get the latest real-time science data and add it to the buffers.
+	// If we are in live mode, get the latest real-time 
+	// science data and add it to the buffers.
 	if ( SendDlgItemMessage( IDC_LIVE, BM_GETCHECK, 0, 0 ) ) {
-
 		// In Live mode we plot up to the latest data.
 		// So position the scrollbar slider to reflect that.
 		m_scrollbar.SetScrollPos( 1000 );
+		live = true;
+	}
+
+	// If the filtering choice has changed,set the filter constant and reload.
+	filtering = SendDlgItemMessage( IDC_FILTERING, BM_GETCHECK, 0, 0 );
+	if ( filtering != previous_filtering_setting ) {
+		if (  filtering == BST_CHECKED ) SetFilterConstant( 10.0 );
+		else SetFilterConstant( 0.0 );
+		previous_filtering_setting = filtering;
+		refilter = true;
+	}
+	
+	if ( live || refilter ) {
 
 		// Get the data from the packet cache, or simulate it.
 		if ( simulateData ) new_data_available = !( 0 == SimulateGripRT());
 		else new_data_available = (bool) !( 0 == GetGripRT());
-		// If there is new data, replot all of it.
-		if ( new_data_available ) {
-			Draw2DGraphics();
-			PostMessage( WM_PAINT );
-		}
 
+	}
+	// If there is new data or if we are refiltering replot all of it.
+	if ( new_data_available || refilter ) {
+		Draw2DGraphics();
+		PostMessage( WM_PAINT );
 	}
 
 	// Start timer again for next round.

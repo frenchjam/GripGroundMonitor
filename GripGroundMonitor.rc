@@ -143,11 +143,13 @@ BEGIN
     CONTROL         "Slider1",IDC_TIMESCALE,"msctls_trackbar32",
                     TBS_AUTOTICKS | TBS_TOP | WS_TABSTOP,10,260,85,15
     CONTROL         "Live",IDC_LIVE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
-                    419,260,30,15
-    SCROLLBAR       IDC_SCROLLBAR,102,262,310,10
+                    410,257,40,10
+    SCROLLBAR       IDC_SCROLLBAR,102,262,298,10
     CONTROL         "Live",IDC_SCRIPTS_LIVE,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,592,227,29,15
     GROUPBOX        "",IDC_STATIC,590,218,35,27
+    CONTROL         "Filter",IDC_FILTERING,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,410,267,40,10
 END
 
 IDD_DIALOG1 DIALOGEX 0, 0, 1062, 57

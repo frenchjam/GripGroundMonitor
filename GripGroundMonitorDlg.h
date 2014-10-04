@@ -66,7 +66,7 @@ public:
 	static float	CompressedMarkerTime[MAX_FRAMES];
 	static float	RealAnalogTime[MAX_FRAMES];
 	static float	CompressedAnalogTime[MAX_FRAMES];
-	static float	ManipulandumPosition[MAX_FRAMES][3];
+	static Vector3	ManipulandumPosition[MAX_FRAMES];
 	static float	ManipulandumOrientation[MAX_FRAMES][3];
 	static Vector3	LoadForce[MAX_FRAMES];
 	static double	LoadForceMagnitude[MAX_FRAMES];
