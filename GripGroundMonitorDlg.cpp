@@ -493,6 +493,13 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 	
+		// Shrink the font for the window showing the full current line in the script.
+	HFONT hFontLine = CreateFont (12, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_SWISS, "Arial");
+	SendDlgItemMessage( IDC_SUBJECTS, WM_SETFONT, WPARAM (hFontLine), FALSE);
+	SendDlgItemMessage( IDC_PROTOCOLS, WM_SETFONT, WPARAM (hFontLine), FALSE);
+	SendDlgItemMessage( IDC_TASKS, WM_SETFONT, WPARAM (hFontLine), FALSE);
+	SendDlgItemMessage( IDC_STEPS, WM_SETFONT, WPARAM (hFontLine), FALSE);
+
 	// Reset the data buffers.
 	ResetBuffers();
 
@@ -516,7 +523,7 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 
 	strncpy( logo_file_path, PictureFilenamePrefix, sizeof( logo_file_path )) ;
 	strncat( logo_file_path, "GripLogo.bmp", sizeof( logo_file_path )) ;
-	logobm = (HBITMAP) LoadImage( NULL, logo_file_path, IMAGE_BITMAP, (int) (.5 * 540), (int) (.5 * 405), LR_CREATEDIBSECTION | LR_LOADFROMFILE | LR_VGACOLOR );
+	logobm = (HBITMAP) LoadImage( NULL, logo_file_path, IMAGE_BITMAP, (int) (.45 * 540), (int) (.45 * 405), LR_CREATEDIBSECTION | LR_LOADFROMFILE | LR_VGACOLOR );
 	SendDlgItemMessage( IDC_COP, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM) logobm );
 
 
