@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "GripGroundMonitor.h"
+#include "DexScriptCrawlerStepDetails.h"
 #include "GripGroundMonitorDlg.h"
 
 #include <stdio.h>
@@ -46,6 +47,32 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 int CGripGroundMonitorDlg::windowSpan[SPAN_VALUES] = { 20 * 60 * 60, 20 * 60 * 30, 20 * 60 * 10, 20 * 60 * 5, 20 * 60, 20 * 30 };
+
+// Character strings to indicate the state of the tone generator output.
+// Lowest bit on is a mute switch, so odd elements are empty while each
+// even element has a bar who's position between the brackets represents
+// a frequency.
+char *CGripGroundMonitorDlg::soundBar[16] = {
+	"|       ",
+	"        ",
+	" |      ",
+	"        ",
+	"  |     ",
+	"        ",
+	"   |    ",
+	"        ",
+	"    |   ",
+	"        ",
+	"     |  ",
+	"        ",
+	"      | ",
+	"        ",
+	"       |",
+	"        " };
+
+// Decode the 2 bits of the mass detectors in the cradles.
+// 00 = empty, 01 = 400gm, 10 = 600gm, 11 = 800gm
+char *CGripGroundMonitorDlg::massDecoder[4] = {".", "S", "M", "L" };
 
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
@@ -114,7 +141,7 @@ CGripGroundMonitorDlg::CGripGroundMonitorDlg(CWnd* pParent, const char *packet_b
 	strncpy( PictureFilenamePrefix, scriptDirectory, sizeof( PictureFilenamePrefix ) );
 	strncat( PictureFilenamePrefix, "pictures\\", sizeof( PictureFilenamePrefix ) );
 
-
+	m_detailsPopup = new DexScriptCrawlerStepDetails();
 
 }
 
@@ -147,6 +174,7 @@ BEGIN_MESSAGE_MAP(CGripGroundMonitorDlg, CDialog)
 	ON_WM_DESTROY()
 	ON_WM_TIMER()
 	ON_WM_HSCROLL()
+	ON_LBN_DBLCLK(IDC_STEPS, OnDblclkSteps)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -164,7 +192,7 @@ END_MESSAGE_MAP()
 
 #define SLICES_PER_PACKET	10
 
-int CGripGroundMonitorDlg::GetLatestGripHK( int *subject, int *protocol, int *task, int *step ) {
+int CGripGroundMonitorDlg::GetLatestGripHK( GripHealthAndStatusInfo *hk ) {
 
 	static int count = 0;
 
@@ -179,7 +207,6 @@ int CGripGroundMonitorDlg::GetLatestGripHK( int *subject, int *protocol, int *ta
 
 	EPMTelemetryPacket packet;
 	EPMTelemetryHeaderInfo epmHeader;
-	GripHealthAndStatusInfo hk;
 
 	struct {
 		int user;
@@ -235,10 +262,10 @@ int CGripGroundMonitorDlg::GetLatestGripHK( int *subject, int *protocol, int *ta
 		// When the subject exits a task, the task counter goes to zero, but the subject
 		//  sees the menu item for the next task highlighted. So we try to guess what 
 		//  the next step is going to be. To do that, we have to look for transitions to 0, 0;
-		ExtractGripHealthAndStatusInfo( &hk, &packet );
-		if ( hk.user != 0 ) non_zero.user = hk.user;
-		if ( hk.protocol != 0 ) non_zero.protocol = hk.protocol;
-		if ( hk.task != 0 ) non_zero.task = hk.task;
+		ExtractGripHealthAndStatusInfo( hk, &packet );
+		if ( hk->user != 0 ) non_zero.user = hk->user;
+		if ( hk->protocol != 0 ) non_zero.protocol = hk->protocol;
+		if ( hk->task != 0 ) non_zero.task = hk->task;
 
 	}
 	// Finished reading. Close the file and check for errors.
@@ -248,12 +275,10 @@ int CGripGroundMonitorDlg::GetLatestGripHK( int *subject, int *protocol, int *ta
 		exit( return_code );
 	}
 
-	ExtractGripHealthAndStatusInfo( &hk, &packet );
-	*subject = ( hk.user == 0 ? non_zero.user : hk.user );
-	*protocol = ( hk.protocol == 0 ? non_zero.protocol : hk.protocol );
-	*task = ( hk.task == 0 ? non_zero.task + 1 : hk.task );
-	*step = hk.step;
-
+	ExtractGripHealthAndStatusInfo( hk, &packet );
+	hk->user = ( hk->user == 0 ? non_zero.user : hk->user );
+	hk->protocol = ( hk->protocol == 0 ? non_zero.protocol : hk->protocol );
+	hk->task = ( hk->task == 0 ? non_zero.task + 1 : hk->task );
 
 	// Check if there were new packets since the last time we read the cache.
 	// Return TRUE if yes, FALSE if no.
@@ -283,7 +308,7 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 	EPMTelemetryHeaderInfo	epmHeader;
 	GripRealtimeDataInfo	rt;
 
-	int mrk, grp;
+	int mrk, grp, coda;
 
 	char filename[1024];
 
@@ -364,18 +389,32 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 
 			for ( mrk = 0, bit = 0x01; mrk < CODA_MARKERS; mrk++, bit = bit << 1 ) {
 
+				// Fill some data arrays to show when each marker is visible.
+				// We consider a marker visible if it is seen by either coda.
+				// Set a non-zero value if it is visible, MISSING_CHAR if it is obscured.
+				// The non-zero values that are set when the marker is visible are a convenient
+				//  trick to make it easy to plot the traces for all markers in one graph.
 				grp = ( mrk >= 8 ? ( mrk >= 12 ? mrk + 20 : mrk + 10 ) : mrk ) + 35;
-				if ( rt.dataSlice[slice].markerVisibility[0] & bit ) MarkerVisibility[nFrames][mrk] = grp;
+				if ( rt.dataSlice[slice].markerVisibility[0] & bit || rt.dataSlice[slice].markerVisibility[1] & bit ) MarkerVisibility[nFrames][mrk] = grp;
 				else MarkerVisibility[nFrames][mrk] = MISSING_CHAR;
 
 			}
 			if (  (rt.dataSlice[slice].manipulandumVisibility & 0x01) ) ManipulandumVisibility[nFrames] = 10;
 			else ManipulandumVisibility[nFrames] = 0;
 
-			Acceleration[nFrames][X] = (double) rt.dataSlice[slice].acceleration[X];
-			Acceleration[nFrames][Y] = (double) rt.dataSlice[slice].acceleration[Y];
-			Acceleration[nFrames][Z] = (double) rt.dataSlice[slice].acceleration[Z];
-
+			// There appears to be a bug in the packets sent by GRIP.
+			// The acceleration data in the last slice is not valid.
+			// So we only take the valid ones.
+			if ( slice < RT_SLICES_PER_PACKET - 1 ) {
+				Acceleration[nFrames][X] = (double) rt.dataSlice[slice].acceleration[X];
+				Acceleration[nFrames][Y] = (double) rt.dataSlice[slice].acceleration[Y];
+				Acceleration[nFrames][Z] = (double) rt.dataSlice[slice].acceleration[Z];
+			}
+			else {
+				Acceleration[nFrames][X] = MISSING_DOUBLE;
+				Acceleration[nFrames][Y] = MISSING_DOUBLE;
+				Acceleration[nFrames][Z] = MISSING_DOUBLE;
+			}
 			nFrames++;
 		}
 
@@ -385,6 +424,16 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 	if ( return_code ) {
 		fMessageBox( MB_OK, "GripMMI", "Error closing %s after binary read.\nError code: %s", filename, return_code );
 		exit( return_code );
+	}
+
+	// Compute the visibility strings for the markers from the last frame.
+	for (coda = 0; coda < CODA_UNITS; coda++ ) {
+		strcpy( markerVisibilityString[coda], "" );
+		for ( mrk = 0, bit = 0x01; mrk < CODA_MARKERS; mrk++, bit = bit << 1 ) {
+			if ( mrk == 8 || mrk == 12 ) strcat( markerVisibilityString[coda], " " );
+			if ( rt.dataSlice[RT_SLICES_PER_PACKET - 1].markerVisibility[coda] & bit ) strcat( markerVisibilityString[coda], "O" );
+			else strcat( markerVisibilityString[coda], "." );
+		}
 	}
 
 	fOutputDebugString( "Acquired Frames (max %d): %d\n", MAX_FRAMES, nFrames );
@@ -493,12 +542,20 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 	
-		// Shrink the font for the window showing the full current line in the script.
+	// Create a popup window to show the full contents of the current step.
+	m_detailsPopup->Create( IDD_FULLLINE, NULL );
+
+	// Shrink the font for the window showing the full current line in the script.
 	HFONT hFontLine = CreateFont (12, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_SWISS, "Arial");
 	SendDlgItemMessage( IDC_SUBJECTS, WM_SETFONT, WPARAM (hFontLine), FALSE);
 	SendDlgItemMessage( IDC_PROTOCOLS, WM_SETFONT, WPARAM (hFontLine), FALSE);
 	SendDlgItemMessage( IDC_TASKS, WM_SETFONT, WPARAM (hFontLine), FALSE);
 	SendDlgItemMessage( IDC_STEPS, WM_SETFONT, WPARAM (hFontLine), FALSE);
+
+	HFONT hFontMarkers = CreateFont (14, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_SWISS, "Courier New");
+	SendDlgItemMessage( IDC_MARKERS, WM_SETFONT, WPARAM (hFontMarkers), FALSE);
+	SendDlgItemMessage( IDC_TARGETS, WM_SETFONT, WPARAM (hFontMarkers), FALSE);
+	SendDlgItemMessage( IDC_TONE, WM_SETFONT, WPARAM (hFontMarkers), FALSE);
 
 	// Reset the data buffers.
 	ResetBuffers();
@@ -526,6 +583,8 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	logobm = (HBITMAP) LoadImage( NULL, logo_file_path, IMAGE_BITMAP, (int) (.45 * 540), (int) (.45 * 405), LR_CREATEDIBSECTION | LR_LOADFROMFILE | LR_VGACOLOR );
 	SendDlgItemMessage( IDC_COP, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM) logobm );
 
+	strcpy( markerVisibilityString[0], "visibility not available" );
+	strcpy( markerVisibilityString[1], "visibility not available" );
 
 	SetTimer( IDT_TIMER1, 500, NULL );
 
@@ -635,7 +694,7 @@ void CGripGroundMonitorDlg::OnSelchangeSteps()
 
 	// Show the full line in a larger box.
 	SendDlgItemMessage( IDC_STEPS, LB_GETTEXT, selected_line, (LPARAM) line );
-	SetDlgItemText( IDC_CURRENT_LINE, line );
+	m_detailsPopup->DisplayLine( line );
 
 	// Show what kind of display it is.
 	SetDlgItemText( IDC_TYPE, type[selected_line] );
@@ -681,7 +740,7 @@ void CGripGroundMonitorDlg::OnSelchangeSteps()
 		strncat( picture_path, picture[selected_line], sizeof( picture_path ) );
 		// If we had loaded a bitmap previously, free the associated memory.
 		DeleteObject( bm );
-		bm = (HBITMAP) LoadImage( NULL, picture_path, IMAGE_BITMAP, (int) (.5 * 540), (int) (.5 * 405), LR_CREATEDIBSECTION | LR_LOADFROMFILE | LR_VGACOLOR );
+		bm = (HBITMAP) LoadImage( NULL, picture_path, IMAGE_BITMAP, (int) (.65 * 540), (int) (.65 * 405), LR_CREATEDIBSECTION | LR_LOADFROMFILE | LR_VGACOLOR );
 		SendDlgItemMessage( IDC_PICTURE, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM) bm );
 	}	
 }
@@ -777,6 +836,9 @@ void CGripGroundMonitorDlg::OnDestroy()
 	// Do whatever a CDialog usually does.
 	CDialog::OnDestroy();
 	
+	// Free the popup dialog memory.
+	delete m_detailsPopup;
+
 	// Free the memory allocated by the PsyPhy2dGraphics system.
 	DestroyViews();
 	DestroyLayouts();
@@ -884,23 +946,64 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 	KillTimer( IDT_TIMER1 );
 	
 	if ( SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_GETCHECK, 0, 0 ) ) {
-		// Get the latest hk packet info.
-		int hk_subject, hk_protocol, hk_task, hk_step;
+
+		int i;
+		unsigned long bit;
+		char target_state_string[32];
+		char mass_state_string[8];
+		char coda_state_string[64];
+
+		GripHealthAndStatusInfo hk_info;
 		int gui_subject, gui_protocol, gui_task, gui_step;
-		GetLatestGripHK( &hk_subject, &hk_protocol, &hk_task, &hk_step );
+
+		// Get the latest hk packet info.
+		GetLatestGripHK( &hk_info );
 
 		// Show the selected subject and protocol in the menus.
 		gui_subject = GetDlgItemInt( IDC_SUBJECTID );
-		if ( hk_subject != gui_subject ) SetDlgItemInt( IDC_SUBJECTID, hk_subject );
+		if ( hk_info.user != gui_subject ) SetDlgItemInt( IDC_SUBJECTID, hk_info.user );
 		gui_protocol = GetDlgItemInt( IDC_PROTOCOLID );
-		if ( hk_protocol != gui_protocol ) SetDlgItemInt( IDC_PROTOCOLID, hk_protocol );
+		if ( hk_info.protocol != gui_protocol ) SetDlgItemInt( IDC_PROTOCOLID, hk_info.protocol );
 		gui_task = GetDlgItemInt( IDC_TASKID );
-		if ( hk_task != gui_task ) SetDlgItemInt( IDC_TASKID, hk_task );
+		if ( hk_info.task != gui_task ) SetDlgItemInt( IDC_TASKID, hk_info.task );
 		gui_step = GetDlgItemInt( IDC_STEPID );
-		if ( hk_step != gui_step )  SetDlgItemInt( IDC_STEPID, hk_step );
+		if ( hk_info.step != gui_step )  SetDlgItemInt( IDC_STEPID, hk_info.step );
 		// Update everything as if the subject, protocol, task and step had been entered by
 		//  hand and then someone pushes the GoTo button.
 		 OnGoto();
+
+		strcpy( target_state_string, "" );
+		for ( i = 0, bit = 0x01; i < 10; i++, bit = bit << 1 ) {
+			if ( bit & hk_info.horizontalTargetFeedback ) strcat( target_state_string, "O" );
+			else strcat( target_state_string, "." );
+		}
+		SendDlgItemMessage( IDC_TARGETS, LB_INSERTSTRING, 0, (LPARAM) target_state_string );
+
+
+		strcpy( target_state_string, "" );
+		for ( i = 0, bit = 0x01; i < 13; i++, bit = bit << 1 ) {
+			if ( bit & hk_info.verticalTargetFeedback ) strcat( target_state_string, "O" );
+			else strcat( target_state_string, "." );
+		}
+		SendDlgItemMessage( IDC_TARGETS, LB_INSERTSTRING, 1, (LPARAM) target_state_string );
+
+		// State of the tone generator.
+		SendDlgItemMessage( IDC_TONE, LB_INSERTSTRING, 0, (LPARAM) soundBar[ hk_info.toneFeedback] );
+
+		// State of the mass cradles.
+		strcpy( mass_state_string, "  " );
+		strcat( mass_state_string, massDecoder[ hk_info.cradleDetectors >> 0 & 0x03 ] );
+		strcat( mass_state_string, massDecoder[ hk_info.cradleDetectors >> 2 & 0x03 ] );
+		strcat( mass_state_string, massDecoder[ hk_info.cradleDetectors >> 4 & 0x03 ] );		
+		SendDlgItemMessage( IDC_TONE, LB_INSERTSTRING, 1, (LPARAM) mass_state_string );
+
+		strcpy( coda_state_string, markerVisibilityString[0] );
+		if ( hk_info.motionTrackerStatusEnum == 2 ) strcat( coda_state_string, " A" );
+		SendDlgItemMessage( IDC_MARKERS, LB_INSERTSTRING, 0, (LPARAM) coda_state_string );
+		strcpy( coda_state_string, markerVisibilityString[1] );
+		if ( hk_info.crewCameraStatusEnum == 2 ) strcat( coda_state_string, " F" );
+		SendDlgItemMessage( IDC_MARKERS, LB_INSERTSTRING, 1, (LPARAM) coda_state_string );
+
 	}
 
 	// If we are in live mode, get the latest real-time 
@@ -940,3 +1043,10 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 	CDialog::OnTimer(nIDEvent);
 }
 
+
+void CGripGroundMonitorDlg::OnDblclkSteps() 
+{
+	
+	m_detailsPopup->ShowWindow( SW_SHOW );
+	
+}

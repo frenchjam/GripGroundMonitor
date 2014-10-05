@@ -9,6 +9,8 @@
 #endif // _MSC_VER > 1000
 
 #include "..\Useful\VectorsMixin.h"
+#include "DexScriptCrawlerStepDetails.h"
+#include "GripPackets.h"
 
 // 2D Graphics Package
 #include "useful.h"
@@ -28,6 +30,7 @@
 // Max number of frames (data slices)
 #define MAX_FRAMES (2*60*60*20)
 #define CODA_MARKERS 20
+#define	CODA_UNITS	2
 #define MANIPULANDUM_FIRST_MARKER 0
 #define MANIPULANDUM_LAST_MARKER  7
 
@@ -94,9 +97,13 @@ public:
 	double upperCopLimit;
 
 	static int windowSpan[SPAN_VALUES];
+	static char *massDecoder[4];
+	static char *soundBar[16];
 
 	const char *packetBufferPathRoot;
 	const char *scriptDirectory;
+
+	char markerVisibilityString[CODA_UNITS][32];
 
 	void ResetBuffers( void );
 	void GraphManipulandumPosition( View view, double start_instant, double stop_instant, int start_frame, int stop_frame );
@@ -108,7 +115,7 @@ public:
 	void GraphCoP( View view, double start_instant, double stop_instant, int start_frame, int stop_frame );
 	void PlotCoP( double start_window, double stop_window, int start_frame, int stop_frame );
 
-	int GetLatestGripHK( int *subject, int *protocol, int *task, int *step );
+	int GetLatestGripHK( GripHealthAndStatusInfo *hk );
 	int GetGripRT( void );
 	int SimulateGripRT ( void );
 
@@ -135,6 +142,7 @@ public:
 // Implementation
 protected:
 	HICON m_hIcon;
+	DexScriptCrawlerStepDetails *m_detailsPopup;
 
 	// Tables holding the items in the session, protocol and task menus.
 
@@ -188,6 +196,7 @@ protected:
 	afx_msg void OnDestroy();
 	afx_msg void OnTimer(UINT nIDEvent);
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	afx_msg void OnDblclkSteps();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

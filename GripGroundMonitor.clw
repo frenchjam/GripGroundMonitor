@@ -2,22 +2,23 @@
 
 [General Info]
 Version=1
-LastClass=IddGripGroundDialog
+LastClass=DexScriptCrawlerStepDetails
 LastTemplate=CDialog
 NewFileInclude1=#include "stdafx.h"
 NewFileInclude2=#include "GripGroundMonitor.h"
 
-ClassCount=4
+ClassCount=5
 Class1=CGripGroundMonitorApp
 Class2=CGripGroundMonitorDlg
 Class3=CAboutDlg
 
 ResourceCount=5
-Resource1=IDD_GRIPGROUNDMONITOR_DIALOG
+Resource1=IDD_ABOUTBOX
 Resource2=IDR_MAINFRAME
 Class4=IddGripGroundDialog
-Resource3=IDD_DIALOG1
-Resource4=IDD_ABOUTBOX
+Resource3=IDD_GRIPGROUNDMONITOR_DIALOG
+Resource4=IDD_FULLLINE
+Class5=DexScriptCrawlerStepDetails
 Resource5=IDD_MEMWARNING
 
 [CLS:CGripGroundMonitorApp]
@@ -55,7 +56,7 @@ Control4=IDOK,button,1342373889
 [DLG:IDD_GRIPGROUNDMONITOR_DIALOG]
 Type=1
 Class=IddGripGroundDialog
-ControlCount=46
+ControlCount=50
 Control1=IDC_STEPS,listbox,1353777409
 Control2=IDC_SUBJECTID,edit,1350631552
 Control3=IDC_PROTOCOLID,edit,1350631552
@@ -101,7 +102,11 @@ Control42=IDC_SCRIPTS_LIVE,button,1342242819
 Control43=IDC_STATIC,button,1342177287
 Control44=IDC_FILTERING,button,1342242819
 Control45=IDC_STATIC,button,1342177287
-Control46=IDC_MARKERS,static,1342177287
+Control46=IDC_MARKERS,listbox,1350566147
+Control47=IDC_TARGETS,listbox,1350566147
+Control48=IDC_STATIC,button,1342177287
+Control49=IDC_TONE,listbox,1350566147
+Control50=IDC_STATIC,button,1342177287
 
 [CLS:IddGripGroundDialog]
 Type=0
@@ -112,14 +117,6 @@ Filter=D
 LastObject=IDABORT
 VirtualFilter=dWC
 
-[DLG:IDD_DIALOG1]
-Type=1
-Class=?
-ControlCount=3
-Control1=IDOK,button,1342242817
-Control2=IDC_STATIC,button,1342177287
-Control3=IDC_CURRENT_LINE,static,1342308352
-
 [DLG:IDD_MEMWARNING]
 Type=1
 Class=?
@@ -127,4 +124,20 @@ ControlCount=3
 Control1=IDOK,button,1342242817
 Control2=IDCANCEL,button,1342242816
 Control3=IDC_STATIC,static,1342308352
+
+[DLG:IDD_FULLLINE]
+Type=1
+Class=DexScriptCrawlerStepDetails
+ControlCount=2
+Control1=IDC_STATIC,button,1342177287
+Control2=IDC_CURRENT_LINE,static,1342308352
+
+[CLS:DexScriptCrawlerStepDetails]
+Type=0
+HeaderFile=DexScriptCrawlerStepDetails.h
+ImplementationFile=DexScriptCrawlerStepDetails.cpp
+BaseClass=CDialog
+Filter=D
+LastObject=DexScriptCrawlerStepDetails
+VirtualFilter=dWC
 

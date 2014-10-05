@@ -10,6 +10,7 @@
 #define IDP_SOCKETS_INIT_FAILED         103
 #define IDR_MAINFRAME                   128
 #define IDD_DIALOG1                     129
+#define IDD_FULLLINE                    129
 #define IDD_MEMWARNING                  130
 #define IDB_LOGO                        131
 #define IDI_GRIP1                       133
@@ -41,11 +42,11 @@
 #define IDC_SCROLLBAR                   1028
 #define IDC_SCRIPTS_LIVE                1029
 #define IDC_FILTERING                   1031
-#define IDC_RADIO1                      1032
-#define IDC_RADIO2                      1033
 #define IDC_PICTURE                     1034
+#define IDC_MARKERS                     1037
+#define IDC_TARGETS                     1038
 #define IDC_STATUS_TEXT                 1039
-#define IDC_RADIO21                     1058
+#define IDC_TONE                        1040
 
 // Next default values for new objects
 // 
@@ -53,7 +54,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1033
+#define _APS_NEXT_CONTROL_VALUE         1038
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
