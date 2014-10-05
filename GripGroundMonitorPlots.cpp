@@ -98,8 +98,8 @@ void CGripGroundMonitorDlg::Intialize2DGraphics() {
 	lowerGripLimit =  -2.0;
 	upperGripLimit =  40.0;
 
-	lowerCopLimit =  -0.025;
-	upperCopLimit =   0.025;
+	lowerCopLimit =  -0.030;
+	upperCopLimit =   0.030;
 
 
 	// The Display will draw into a defined subwindow. 
