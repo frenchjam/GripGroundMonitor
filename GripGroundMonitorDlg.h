@@ -62,6 +62,12 @@ public:
 
 	void Intialize2DGraphics();
 	void Draw2DGraphics();
+	void GoToSpecifiedSubject( int subject );
+	void GoToSpecifiedProtocol( int protocol );
+	void GoToSpecifiedTask( int task );
+	void GoToSpecifiedStep( int step );
+
+	void GoToSpecified( int subject, int protocol, int task, int step );
 
 	// Data buffers.
 	unsigned int	nFrames;
@@ -197,6 +203,10 @@ protected:
 	afx_msg void OnTimer(UINT nIDEvent);
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	afx_msg void OnDblclkSteps();
+	afx_msg void OnSetfocusSubjectid();
+	afx_msg void OnSetfocusProtocolid();
+	afx_msg void OnSetfocusTaskid();
+	afx_msg void OnSetfocusStepid();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

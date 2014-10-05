@@ -146,8 +146,7 @@ BEGIN
                     422,113,40,10
     SCROLLBAR       IDC_SCROLLBAR,102,118,303,10
     CONTROL         "Live",IDC_SCRIPTS_LIVE,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,598,206,29,10
-    GROUPBOX        "",IDC_STATIC,596,196,35,23
+                    WS_TABSTOP,601,205,26,10
     CONTROL         "Filter",IDC_FILTERING,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,422,123,40,10
     GROUPBOX        "Tracker",IDC_STATIC,466,421,78,27

@@ -2,7 +2,7 @@
 
 [General Info]
 Version=1
-LastClass=DexScriptCrawlerStepDetails
+LastClass=CGripGroundMonitorDlg
 LastTemplate=CDialog
 NewFileInclude1=#include "stdafx.h"
 NewFileInclude2=#include "GripGroundMonitor.h"
@@ -56,7 +56,7 @@ Control4=IDOK,button,1342373889
 [DLG:IDD_GRIPGROUNDMONITOR_DIALOG]
 Type=1
 Class=IddGripGroundDialog
-ControlCount=50
+ControlCount=49
 Control1=IDC_STEPS,listbox,1353777409
 Control2=IDC_SUBJECTID,edit,1350631552
 Control3=IDC_PROTOCOLID,edit,1350631552
@@ -99,14 +99,13 @@ Control39=IDC_TIMESCALE,msctls_trackbar32,1342242821
 Control40=IDC_LIVE,button,1342242819
 Control41=IDC_SCROLLBAR,scrollbar,1342177280
 Control42=IDC_SCRIPTS_LIVE,button,1342242819
-Control43=IDC_STATIC,button,1342177287
-Control44=IDC_FILTERING,button,1342242819
-Control45=IDC_STATIC,button,1342177287
-Control46=IDC_MARKERS,listbox,1350566147
-Control47=IDC_TARGETS,listbox,1350566147
-Control48=IDC_STATIC,button,1342177287
-Control49=IDC_TONE,listbox,1350566147
-Control50=IDC_STATIC,button,1342177287
+Control43=IDC_FILTERING,button,1342242819
+Control44=IDC_STATIC,button,1342177287
+Control45=IDC_MARKERS,listbox,1350566147
+Control46=IDC_TARGETS,listbox,1350566147
+Control47=IDC_STATIC,button,1342177287
+Control48=IDC_TONE,listbox,1350566147
+Control49=IDC_STATIC,button,1342177287
 
 [CLS:IddGripGroundDialog]
 Type=0
@@ -114,7 +113,7 @@ HeaderFile=IddGripGroundDialog.h
 ImplementationFile=IddGripGroundDialog.cpp
 BaseClass=CDialog
 Filter=D
-LastObject=IDABORT
+LastObject=IDC_SUBJECTID
 VirtualFilter=dWC
 
 [DLG:IDD_MEMWARNING]

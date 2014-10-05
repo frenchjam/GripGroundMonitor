@@ -50,25 +50,25 @@ int CGripGroundMonitorDlg::windowSpan[SPAN_VALUES] = { 20 * 60 * 60, 20 * 60 * 3
 
 // Character strings to indicate the state of the tone generator output.
 // Lowest bit on is a mute switch, so odd elements are empty while each
-// even element has a bar who's position between the brackets represents
-// a frequency.
+// even element has a bar who's left-right position represents a frequency.
 char *CGripGroundMonitorDlg::soundBar[16] = {
-	"|       ",
-	"        ",
-	" |      ",
-	"        ",
-	"  |     ",
-	"        ",
-	"   |    ",
-	"        ",
-	"    |   ",
-	"        ",
-	"     |  ",
-	"        ",
-	"      | ",
-	"        ",
-	"       |",
-	"        " };
+	"|.......",
+	"........",
+	".|......",
+	"........",
+	"..|.....",
+	"........",
+	"...|....",
+	"........",
+	"....|...",
+	"........",
+	".....|..",
+	"........",
+	"......|.",
+	"........",
+	".......|",
+	"........" 
+};
 
 // Decode the 2 bits of the mass detectors in the cradles.
 // 00 = empty, 01 = 400gm, 10 = 600gm, 11 = 800gm
@@ -175,6 +175,10 @@ BEGIN_MESSAGE_MAP(CGripGroundMonitorDlg, CDialog)
 	ON_WM_TIMER()
 	ON_WM_HSCROLL()
 	ON_LBN_DBLCLK(IDC_STEPS, OnDblclkSteps)
+	ON_EN_SETFOCUS(IDC_SUBJECTID, OnSetfocusSubjectid)
+	ON_EN_SETFOCUS(IDC_PROTOCOLID, OnSetfocusProtocolid)
+	ON_EN_SETFOCUS(IDC_TASKID, OnSetfocusTaskid)
+	ON_EN_SETFOCUS(IDC_STEPID, OnSetfocusStepid)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -266,6 +270,7 @@ int CGripGroundMonitorDlg::GetLatestGripHK( GripHealthAndStatusInfo *hk ) {
 		if ( hk->user != 0 ) non_zero.user = hk->user;
 		if ( hk->protocol != 0 ) non_zero.protocol = hk->protocol;
 		if ( hk->task != 0 ) non_zero.task = hk->task;
+		if ( hk->step != 0 ) non_zero.step = hk->step;
 
 	}
 	// Finished reading. Close the file and check for errors.
@@ -278,7 +283,8 @@ int CGripGroundMonitorDlg::GetLatestGripHK( GripHealthAndStatusInfo *hk ) {
 	ExtractGripHealthAndStatusInfo( hk, &packet );
 	hk->user = ( hk->user == 0 ? non_zero.user : hk->user );
 	hk->protocol = ( hk->protocol == 0 ? non_zero.protocol : hk->protocol );
-	hk->task = ( hk->task == 0 ? non_zero.task + 1 : hk->task );
+	hk->task = ( hk->task == 0 ? non_zero.task : hk->task );
+	hk->step = ( hk->step == 0 ? non_zero.step : hk->step );
 
 	// Check if there were new packets since the last time we read the cache.
 	// Return TRUE if yes, FALSE if no.
@@ -648,66 +654,88 @@ HCURSOR CGripGroundMonitorDlg::OnQueryDragIcon()
 // Update to be performed when the selected user (subject) changes.
 void CGripGroundMonitorDlg::OnSelchangeSubjects() 
 {
+	// Script crawler is no longer live.
+	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
 	// Update when a different subject is selected.
 	int subject = SendDlgItemMessage( IDC_SUBJECTS, LB_GETCURSEL, 0, 0 );
+	GoToSpecifiedSubject( subject );
+}
+void CGripGroundMonitorDlg::GoToSpecifiedSubject( int subject ) 
+{
 	ParseSessionFile( session_file[subject] );
-	SendDlgItemMessage( IDC_PROTOCOLS, LB_SETCURSEL, 0, 0 );
+	SendDlgItemMessage( IDC_SUBJECTS, LB_SETCURSEL, subject, 0 );
 	SetDlgItemInt( IDC_SUBJECTID, subjectID[subject] );
-	OnSelchangeProtocols();	
+	GoToSpecifiedProtocol( 0 );	
 }
 
 // Update to be performed when the selected protocol changes.
 void CGripGroundMonitorDlg::OnSelchangeProtocols() 
-
 {
-	
+	// Script crawler is no longer live.
+	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
 	int protocol = SendDlgItemMessage( IDC_PROTOCOLS, LB_GETCURSEL, 0, 0 );
+	GoToSpecifiedProtocol( protocol );
+}
+void CGripGroundMonitorDlg::GoToSpecifiedProtocol( int protocol ) 
+{
 	ParseProtocolFile( protocol_file[protocol] );
-	SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, 0, 0 );
+	SendDlgItemMessage( IDC_PROTOCOLS, LB_SETCURSEL, protocol, 0 );
 	SetDlgItemInt( IDC_PROTOCOLID, protocolID[protocol] );
-	OnSelchangeTasks();
-	
+	GoToSpecifiedTask( 0 );
 }
 
 // Update to be performed when the selected task changes.
 void CGripGroundMonitorDlg::OnSelchangeTasks() 
 {
+	// Script crawler is no longer live.
+	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
 	int task = SendDlgItemMessage( IDC_TASKS, LB_GETCURSEL, 0, 0 );
+	GoToSpecifiedTask( task );
+}
+void CGripGroundMonitorDlg::GoToSpecifiedTask( int task ) 
+{
 	ParseTaskFile( task_file[task] );
-	// Need to reset the step to the top if the task changes.
-	SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, 0, 0 );
+	SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, task, 0 );
 	SetDlgItemInt( IDC_TASKID, taskID[task] );
-	OnSelchangeSteps();	
+	GoToSpecifiedStep( 0 );	
 }
 
 // Update to be performed when the selected step is changed.
 void CGripGroundMonitorDlg::OnSelchangeSteps() 
 {
-	static HBITMAP bm = 0;
 
+	// Script crawler is no longer live.
+	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
+	int step = SendDlgItemMessage( IDC_STEPS, LB_GETCURSEL, 0, 0 );
+	GoToSpecifiedStep( step );
+}
+
+void CGripGroundMonitorDlg::GoToSpecifiedStep( int step ) 
+{
+
+	static HBITMAP bm = 0;
 	char line[1024];
-	int selected_line = SendDlgItemMessage( IDC_STEPS, LB_GETCURSEL, 0, 0 );
 
 	// Center the selected line in the box.
-	SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, selected_line + 14, 0 );
-	SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, selected_line, 0 );
+	SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, step + 14, 0 );
+	SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, step, 0 );
 
 	// Show the full line in a larger box.
-	SendDlgItemMessage( IDC_STEPS, LB_GETTEXT, selected_line, (LPARAM) line );
+	SendDlgItemMessage( IDC_STEPS, LB_GETTEXT, step, (LPARAM) line );
 	m_detailsPopup->DisplayLine( line );
 
 	// Show what kind of display it is.
-	SetDlgItemText( IDC_TYPE, type[selected_line] );
+	SetDlgItemText( IDC_TYPE, type[step] );
 
 	// Show or hide buttons accordingly.
-	if ( type[selected_line] == type_alert ) {
+	if ( type[step] == type_alert ) {
 		GetDlgItem( IDOK )->ShowWindow( SW_HIDE );
 		GetDlgItem( IDRETRY )->ShowWindow( SW_SHOW );
 		GetDlgItem( IDIGNORE )->ShowWindow( SW_SHOW );
 		GetDlgItem( IDCANCEL )->ShowWindow( SW_SHOW );
 		GetDlgItem( IDINTERRUPT )->ShowWindow( SW_HIDE );
 	}
-	else if ( type[selected_line] == type_query ) {
+	else if ( type[step] == type_query ) {
 		GetDlgItem( IDOK )->ShowWindow( SW_SHOW );
 		GetDlgItem( IDRETRY )->ShowWindow( SW_HIDE );
 		GetDlgItem( IDIGNORE )->ShowWindow( SW_HIDE );
@@ -722,22 +750,22 @@ void CGripGroundMonitorDlg::OnSelchangeSteps()
 		GetDlgItem( IDINTERRUPT )->ShowWindow( SW_SHOW );
 	}
 
-	SetDlgItemInt( IDC_STEPID, stepID[selected_line] );
+	SetDlgItemInt( IDC_STEPID, stepID[step] );
 
 	// Convert \n escape sequence to newline. 
-	for ( char *ptr =message[selected_line]; *ptr; ptr++ ) {
+	for ( char *ptr =message[step]; *ptr; ptr++ ) {
 		if ( *ptr == '\\' && *(ptr+1) == 'n' ) {
 			*ptr = '\r';
 			*(ptr+1) = '\n';
 		}
 	}
-	SetDlgItemText( IDC_STATUS_TEXT, message[selected_line] );
+	SetDlgItemText( IDC_STATUS_TEXT, message[step] );
 
 	// Show the picture.
-	if ( strlen( picture[selected_line] ) ) {
+	if ( strlen( picture[step] ) ) {
 		char picture_path[1024];
 		strncpy( picture_path, PictureFilenamePrefix, sizeof( picture_path ) );
-		strncat( picture_path, picture[selected_line], sizeof( picture_path ) );
+		strncat( picture_path, picture[step], sizeof( picture_path ) );
 		// If we had loaded a bitmap previously, free the associated memory.
 		DeleteObject( bm );
 		bm = (HBITMAP) LoadImage( NULL, picture_path, IMAGE_BITMAP, (int) (.65 * 540), (int) (.65 * 405), LR_CREATEDIBSECTION | LR_LOADFROMFILE | LR_VGACOLOR );
@@ -748,6 +776,10 @@ void CGripGroundMonitorDlg::OnSelchangeSteps()
 // When the 'Next' button is pressed, skip to the next non-comment step.
 void CGripGroundMonitorDlg::OnNextStep() 
 {
+	// Script crawler is no longer live.
+	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
+
+	// Find the next non-comment step.
 	int selected_line = SendDlgItemMessage( IDC_STEPS, LB_GETCURSEL, 0, 0 );
 	selected_line++;
 	while ( comment[selected_line] ) selected_line++;
@@ -759,6 +791,10 @@ void CGripGroundMonitorDlg::OnNextStep()
 //  When the 'Next' button is double clicked, skip to the next step that is a query or error message.
 void CGripGroundMonitorDlg::OnDoubleclickedNextStep() 
 {
+	// Script crawler is no longer live.
+	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
+
+	// Find the next query or error step.
 	int selected_line = SendDlgItemMessage( IDC_STEPS, LB_GETCURSEL, 0, 0 );
 	while ( comment[selected_line] || type[selected_line] == type_status ) selected_line++;
 	SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, selected_line, 0 );
@@ -770,65 +806,66 @@ void CGripGroundMonitorDlg::OnDoubleclickedNextStep()
 //  values that are found in the 4 corresponding text boxes.
 void CGripGroundMonitorDlg::OnGoto() 
 {
+	// Script crawler is no longer live.
+	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
+
+	int subject_id = GetDlgItemInt( IDC_SUBJECTID );
+	int protocol_id = GetDlgItemInt( IDC_PROTOCOLID );
+	int task_id = GetDlgItemInt( IDC_TASKID );
+	int step_id = GetDlgItemInt( IDC_STEPID );
+
+	GoToSpecified( subject_id, protocol_id, task_id, step_id );
+}
+
+
+// Position the script selections according to the user, protocol, task and step
+//  values that are found in the 4 corresponding text boxes.
+void CGripGroundMonitorDlg::GoToSpecified( int subject_id, int protocol_id, int task_id, int step_id ) 
+{
 	int i, current_selection;
-
-	int subject = GetDlgItemInt( IDC_SUBJECTID );
-	int protocol = GetDlgItemInt( IDC_PROTOCOLID );
-	int task = GetDlgItemInt( IDC_TASKID );
-	int step = GetDlgItemInt( IDC_STEPID );
-
 
 	current_selection =  SendDlgItemMessage( IDC_SUBJECTS, LB_GETCURSEL, 0, 0 );
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
-		if ( subjectID[i] == subject ) break;
+		if ( subjectID[i] == subject_id ) break;
 	}
-	if ( subjectID[i] != subject ) {
-//		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Subject ID %3d not recognized.\nReverting to previous subject.", subject );
+	if ( subjectID[i] != subject_id ) {
 		SetDlgItemInt( IDC_SUBJECTID, subjectID[current_selection] );
 	}
 	else if ( i != current_selection ) {
 		SendDlgItemMessage( IDC_SUBJECTS, LB_SETCURSEL, i, 0 );
-		OnSelchangeSubjects();
+		GoToSpecifiedSubject( i );
 	}
 
 	current_selection =  SendDlgItemMessage( IDC_PROTOCOLS, LB_GETCURSEL, 0, 0 );
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
-		if ( protocolID[i] == protocol ) break;
+		if ( protocolID[i] == protocol_id ) break;
 	}
-	if ( protocolID[i] != protocol ) {
-//		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Protocol ID %3d not recognized.\nReverting to previous protocol.", protocol );
+	if ( protocolID[i] != protocol_id ) {
 		SetDlgItemInt( IDC_PROTOCOLID, protocolID[current_selection] );
 	}
 	else if ( i != current_selection ) {
 		SendDlgItemMessage( IDC_PROTOCOLS, LB_SETCURSEL, i, 0 );
-		OnSelchangeProtocols();
+		GoToSpecifiedProtocol( i );
 	}
 
 	current_selection =  SendDlgItemMessage( IDC_TASKS, LB_GETCURSEL, 0, 0 );
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
-		if ( taskID[i] == task ) break;
+		if ( taskID[i] == task_id ) break;
 	}
-	// Requesting task 0 say to move the selection to the next line.
-	if ( task == 0 ) {
-		SetDlgItemInt( IDC_TASKID, taskID[current_selection+1] );
-		SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, current_selection+1, 0 );
-		OnSelchangeTasks();
-	}
-	else if ( taskID[i] != task ) {
-//		fMessageBox( MB_OK | MB_ICONERROR, "DexScriptCrawler", "Task ID %3d not recognized.", task );
+	if ( taskID[i] != task_id ) {
 		SetDlgItemInt( IDC_TASKID, taskID[current_selection] );
 	}
 	else if ( i != current_selection ) {
 		SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, i, 0 );
-		OnSelchangeTasks();
+		GoToSpecifiedTask( i );
 	}
-
 
 	for ( i = 0; i < MAX_STEPS; i++ ) {
-		if ( stepID[i] >= step ) break;
+		if ( stepID[i] >= step_id ) break;
 	}
 	SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, i, 0 );
-	OnSelchangeSteps();	
+	GoToSpecifiedStep( i );
+
 }
 
 void CGripGroundMonitorDlg::OnDestroy() 
@@ -954,32 +991,32 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 		char coda_state_string[64];
 
 		GripHealthAndStatusInfo hk_info;
-		int gui_subject, gui_protocol, gui_task, gui_step;
 
 		// Get the latest hk packet info.
 		GetLatestGripHK( &hk_info );
 
 		// Show the selected subject and protocol in the menus.
-		gui_subject = GetDlgItemInt( IDC_SUBJECTID );
-		if ( hk_info.user != gui_subject ) SetDlgItemInt( IDC_SUBJECTID, hk_info.user );
-		gui_protocol = GetDlgItemInt( IDC_PROTOCOLID );
-		if ( hk_info.protocol != gui_protocol ) SetDlgItemInt( IDC_PROTOCOLID, hk_info.protocol );
-		gui_task = GetDlgItemInt( IDC_TASKID );
-		if ( hk_info.task != gui_task ) SetDlgItemInt( IDC_TASKID, hk_info.task );
-		gui_step = GetDlgItemInt( IDC_STEPID );
-		if ( hk_info.step != gui_step )  SetDlgItemInt( IDC_STEPID, hk_info.step );
+		SetDlgItemInt( IDC_SUBJECTID, hk_info.user );
+		SetDlgItemInt( IDC_PROTOCOLID, hk_info.protocol );
+		SetDlgItemInt( IDC_TASKID, hk_info.task );
+		SetDlgItemInt( IDC_STEPID, hk_info.step );
+
 		// Update everything as if the subject, protocol, task and step had been entered by
 		//  hand and then someone pushes the GoTo button.
-		 OnGoto();
+		GoToSpecified( hk_info.user, hk_info.protocol, hk_info.task, hk_info.step );
 
+		// GoToSpecified( ) has the side effect of going non-live.
+		// Need to set back to live mode.
+		// SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_CHECKED, 0 );
+
+
+		// State of the target LEDs.
 		strcpy( target_state_string, "" );
 		for ( i = 0, bit = 0x01; i < 10; i++, bit = bit << 1 ) {
 			if ( bit & hk_info.horizontalTargetFeedback ) strcat( target_state_string, "O" );
 			else strcat( target_state_string, "." );
 		}
 		SendDlgItemMessage( IDC_TARGETS, LB_INSERTSTRING, 0, (LPARAM) target_state_string );
-
-
 		strcpy( target_state_string, "" );
 		for ( i = 0, bit = 0x01; i < 13; i++, bit = bit << 1 ) {
 			if ( bit & hk_info.verticalTargetFeedback ) strcat( target_state_string, "O" );
@@ -1049,4 +1086,24 @@ void CGripGroundMonitorDlg::OnDblclkSteps()
 	
 	m_detailsPopup->ShowWindow( SW_SHOW );
 	
+}
+
+void CGripGroundMonitorDlg::OnSetfocusSubjectid() 
+{
+	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
+}
+
+void CGripGroundMonitorDlg::OnSetfocusProtocolid() 
+{
+	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
+}
+
+void CGripGroundMonitorDlg::OnSetfocusTaskid() 
+{
+	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );	
+}
+
+void CGripGroundMonitorDlg::OnSetfocusStepid() 
+{
+	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );	
 }

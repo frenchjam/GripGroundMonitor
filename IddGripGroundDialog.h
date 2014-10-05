@@ -35,7 +35,7 @@ protected:
 
 	// Generated message map functions
 	//{{AFX_MSG(IddGripGroundDialog)
-		// NOTE: the ClassWizard will add member functions here
+	afx_msg void OnSetfocusSubjectid();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
