@@ -165,6 +165,10 @@ SOURCE=.\GripLogo.bmp
 
 SOURCE=.\res\icon1.ico
 # End Source File
+# Begin Source File
+
+SOURCE=.\MakeGripIcon5.bmp
+# End Source File
 # End Group
 # Begin Group "Libraries"
 

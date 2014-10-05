@@ -444,7 +444,12 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 
 	fOutputDebugString( "Acquired Frames (max %d): %d\n", MAX_FRAMES, nFrames );
 	if ( nFrames >= MAX_FRAMES ) {
-		fMessageBox( MB_OK | MB_ICONERROR, "GripMMI", "Internal buffers full." );
+		char filename2[PATHLENGTH];
+		CreateGripPacketCacheFilename( filename2, sizeof( filename ), GRIP_HK_BULK_PACKET, packetBufferPathRoot );
+		fMessageBox( MB_OK | MB_ICONERROR, "GripMMI", 
+			"Internal buffers are full.\nYou can continue plotting existing data.\nTo display latest acquisitons:\n\n1) Halt GripGroundMonitorClient.\n2) Rename or move:\n      %s\n      %s\n3) Restart GripGroundMonitorClient.",
+			filename, filename2 );
+		SendDlgItemMessage( IDC_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
 	}
 
 
