@@ -13,11 +13,11 @@ Class2=CGripGroundMonitorDlg
 Class3=CAboutDlg
 
 ResourceCount=5
-Resource1=IDD_ABOUTBOX
+Resource1=IDD_FULLLINE
 Resource2=IDR_MAINFRAME
 Class4=IddGripGroundDialog
-Resource3=IDD_GRIPGROUNDMONITOR_DIALOG
-Resource4=IDD_FULLLINE
+Resource3=IDD_ABOUTBOX
+Resource4=IDD_GRIPGROUNDMONITOR_DIALOG
 Class5=DexScriptCrawlerStepDetails
 Resource5=IDD_MEMWARNING
 
