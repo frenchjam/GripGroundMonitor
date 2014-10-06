@@ -12,6 +12,8 @@
 #include <share.h>
 #include <sys\stat.h>
 #include <conio.h>
+#include <math.h>
+#include <float.h>
 
 #include "GripPackets.h"
 
@@ -368,15 +370,24 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 			//  something more clever to compute the real time of each data point.
 			RealMarkerTime[nFrames] = nFrames * .05;
 			if ( rt.dataSlice[slice].manipulandumVisibility ) {
+
 				ManipulandumPosition[nFrames][X] = rt.dataSlice[slice].position[X] / 10.0;
 				ManipulandumPosition[nFrames][Y] = rt.dataSlice[slice].position[Y] / 10.0;
 				ManipulandumPosition[nFrames][Z] = rt.dataSlice[slice].position[Z] / 10.0;
+
+				QuaternionToCannonicalRotations( ManipulandumRotations[nFrames], rt.dataSlice[slice].quaternion );
+
 				FilterManipulandumPosition( ManipulandumPosition[nFrames] );
+				if ( _finite( ManipulandumRotations[nFrames][X] ) ) FilterManipulandumRotations( ManipulandumRotations[nFrames] );
 			}
 			else {
 				ManipulandumPosition[nFrames][X] = MISSING_DOUBLE;
 				ManipulandumPosition[nFrames][Y] = MISSING_DOUBLE;
 				ManipulandumPosition[nFrames][Z] = MISSING_DOUBLE;
+
+				ManipulandumRotations[nFrames][X] = MISSING_DOUBLE;
+				ManipulandumRotations[nFrames][Y] = MISSING_DOUBLE;
+				ManipulandumRotations[nFrames][Z] = MISSING_DOUBLE;
 			}
 			RealAnalogTime[nFrames] = nFrames * 0.05;
 			

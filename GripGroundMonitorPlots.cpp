@@ -49,7 +49,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-float CGripGroundMonitorDlg::ManipulandumOrientation[MAX_FRAMES][3];
+Vector3 CGripGroundMonitorDlg::ManipulandumRotations[MAX_FRAMES];
 Vector3 CGripGroundMonitorDlg::ManipulandumPosition[MAX_FRAMES];
 float CGripGroundMonitorDlg::Acceleration[MAX_FRAMES][3];
 float CGripGroundMonitorDlg::GripForce[MAX_FRAMES];
@@ -78,6 +78,9 @@ void CGripGroundMonitorDlg::Intialize2DGraphics() {
 
 	lowerPositionLimit = -500.0;
 	upperPositionLimit =  750.0;
+
+	lowerRotationLimit = - Pi;
+	upperRotationLimit =   Pi;
 
 	lowerPositionLimitSpecific[X] = -200.0;
 	upperPositionLimitSpecific[X] =  600.0, 
@@ -118,7 +121,9 @@ void CGripGroundMonitorDlg::Intialize2DGraphics() {
 	
 	// Create an array of Views that will be used to plot data in stripchart form.
 	stripchart_layout = CreateLayout( stripchart_display, STRIPCHARTS, 1 );
-	LayoutSetDisplayEdgesRelative( stripchart_layout, 0.01, 0.01, 0.99, 0.99 );
+	LayoutSetDisplayEdgesRelative( stripchart_layout, 0.01, 0.055, 0.99, 0.99 );
+	visibility_view = CreateView( stripchart_display );
+	ViewSetDisplayEdgesRelative( visibility_view, 0.015, 0.01, 0.985, 0.05 );
 
 	// Create a Display and View for each of the phase plot subwindows:
 	//  ZY, XY, XZ and COP (center-of-pressure)
@@ -210,12 +215,37 @@ void CGripGroundMonitorDlg::GraphManipulandumPosition( View view, double start_i
 	if ( stop_frame >= stop_instant ) stop_frame = stop_instant - 1;
 
 	// Plot all 3 components of the manipulandum position in the same view;
-	for ( int i = 0; i < 3; i++ ) {
+	for ( int i = X; i <= Z; i++ ) {
 		ViewSelectColor( view, i );
 		if ( stop_frame > start_frame ) ViewPlotAvailableDoubles( view, &ManipulandumPosition[0][i], start_frame, stop_frame, sizeof( *ManipulandumPosition ), MISSING_DOUBLE );
 	}
 
 }
+
+void CGripGroundMonitorDlg::GraphManipulandumRotations( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) {
+
+	Display display = view->display;
+	DisplayActivate( display );
+	
+	ViewColor( view, GREY6 );
+	ViewBox( view );
+	ViewTitle( view, "Manipulandum Rotation", INSIDE_LEFT, INSIDE_TOP, 0.0 );
+
+	ViewSetXLimits( view, start_instant, stop_instant );
+	ViewSetYLimits( view, lowerRotationLimit, upperRotationLimit );
+	ViewAxes( view );
+
+	if ( start_frame < start_instant ) start_frame = start_instant;
+	if ( stop_frame >= stop_instant ) stop_frame = stop_instant - 1;
+
+	// Plot all 3 components of the manipulandum position in the same view;
+	for ( int i = X; i <= Z; i++ ) {
+		ViewSelectColor( view, i );
+		if ( stop_frame > start_frame ) ViewPlotAvailableDoubles( view, &ManipulandumRotations[0][i], start_frame, stop_frame, sizeof( *ManipulandumRotations ), MISSING_DOUBLE );
+	}
+
+}
+
 
 void CGripGroundMonitorDlg::GraphLoadForce( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) {
 
@@ -315,7 +345,7 @@ void CGripGroundMonitorDlg::GraphCoP( View view, double start_instant, double st
 	for ( int ati = 0; ati < 2; ati++ ) {
 		for ( int i = X; i <= Z; i++ ) {
 			ViewSelectColor( view, 3 * ati + i );
-			if ( stop_frame > start_frame ) ViewPlotAvailableDoubles( view, &CenterOfPressure[ati][0][i], start_frame, stop_frame, sizeof( *CenterOfPressure[ati] ), MISSING_DOUBLE );
+			if ( stop_frame > start_frame ) ViewPlotClippedDoubles( view, &CenterOfPressure[ati][0][i], start_frame, stop_frame, sizeof( *CenterOfPressure[ati] ), MISSING_DOUBLE );
 		}
 	}
 		
@@ -451,12 +481,13 @@ void CGripGroundMonitorDlg::Draw2DGraphics() {
 	int first_instant = last_instant - windowSpan[width];
 	fOutputDebugString( "Span: %d %d\n", width, SPAN_VALUES );
 
-	GraphManipulandumPosition( LayoutViewN( stripchart_layout, 4 ), first_instant, last_instant, first_sample, last_sample );
+	GraphManipulandumPosition( LayoutViewN( stripchart_layout, 0 ), first_instant, last_instant, first_sample, last_sample );
+	GraphManipulandumRotations( LayoutViewN( stripchart_layout, 1 ), first_instant, last_instant, first_sample, last_sample );
 	GraphAcceleration( LayoutViewN( stripchart_layout, 2 ), first_instant, last_instant, first_sample, last_sample );
 	GraphGripForce( LayoutViewN( stripchart_layout, 3 ), first_instant, last_instant, first_sample, last_sample );
-	GraphLoadForce( LayoutViewN( stripchart_layout, 1 ), first_instant, last_instant, first_sample, last_sample );
-	GraphCoP( LayoutViewN( stripchart_layout, 0 ), first_instant, last_instant, first_sample, last_sample );
-	GraphVisibility( LayoutViewN( stripchart_layout, 5 ), first_instant, last_instant, first_sample, last_sample );
+	GraphLoadForce( LayoutViewN( stripchart_layout, 4 ), first_instant, last_instant, first_sample, last_sample );
+	GraphCoP( LayoutViewN( stripchart_layout, 5 ), first_instant, last_instant, first_sample, last_sample );
+	GraphVisibility( visibility_view, first_instant, last_instant, first_sample, last_sample );
 
 	PlotManipulandumPosition( first_instant, last_instant, first_sample, last_sample );
 	PlotCoP( first_instant, last_instant, first_sample, last_sample );

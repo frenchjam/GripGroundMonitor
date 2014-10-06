@@ -76,7 +76,7 @@ public:
 	static float	RealAnalogTime[MAX_FRAMES];
 	static float	CompressedAnalogTime[MAX_FRAMES];
 	static Vector3	ManipulandumPosition[MAX_FRAMES];
-	static float	ManipulandumOrientation[MAX_FRAMES][3];
+	static Vector3	ManipulandumRotations[MAX_FRAMES];
 	static Vector3	LoadForce[MAX_FRAMES];
 	static double	LoadForceMagnitude[MAX_FRAMES];
 	static float	Acceleration[MAX_FRAMES][3];
@@ -87,6 +87,9 @@ public:
 
 	double lowerPositionLimit;
 	double upperPositionLimit;
+
+	double lowerRotationLimit;
+	double upperRotationLimit;
 
 	double lowerPositionLimitSpecific[3];
 	double upperPositionLimitSpecific[3];
@@ -113,6 +116,7 @@ public:
 
 	void ResetBuffers( void );
 	void GraphManipulandumPosition( View view, double start_instant, double stop_instant, int start_frame, int stop_frame );
+	void GraphManipulandumRotations( View view, double start_instant, double stop_instant, int start_frame, int stop_frame );
 	void PlotManipulandumPosition( double start_window, double stop_window, int start_frame, int stop_frame );
 	void GraphLoadForce( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) ;
 	void GraphAcceleration( View view, double start_instant, double stop_instant, int start_frame, int stop_frame ) ;
@@ -185,6 +189,7 @@ protected:
 
 	Display stripchart_display;
 	Layout	stripchart_layout;
+	View	visibility_view;
 
 	// Generated message map functions
 	//{{AFX_MSG(CGripGroundMonitorDlg)
