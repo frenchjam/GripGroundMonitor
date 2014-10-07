@@ -230,19 +230,20 @@ int CGripGroundMonitorDlg::GetLatestGripHK( GripHealthAndStatusInfo *hk ) {
 	// The user can choose to continue to wait or cancel program execution.
 	do {
 		for ( retry_count = 0; retry_count  < MAX_OPEN_CACHE_RETRIES; retry_count ++ ) {
-			// If open succeeds, it will return zero. So if zero return, break from retry loop.
+			// Try to open the packet cache file.
 			fid = _open( filename, _O_RDONLY | _O_BINARY, _SH_DENYNO, _S_IWRITE | _S_IREAD  );
-			if ( fid != 0 ) break;
+			// If open succeeds, it will return zero. So if zero return, break from retry loop.
+			if ( fid >= 0 ) break;
 			// Wait a second before trying again.
 			Sleep( RETRY_PAUSE );
 		}
-		// If fid is non-zero, file is open, so break out of loop and continue.
-		if ( fid != 0 ) break;
-		// If return_code is non-zero, we are here because the retry count has been reached without opening the file.
+		// If fid is non-negative, file is open, so break out of loop and continue.
+		if ( fid >= 0 ) break;
+		// If return_code is negative, we are here because the retry count has been reached without opening the file.
 		// Ask the user if they want to keep on trying or abort.
 		else {
-			mb_answer = fMessageBox( MB_RETRYCANCEL, "GripMMI", "Error opening %s for binary read.\nContinue trying?", filename );
-			if ( mb_answer == IDCANCEL ) exit( ERROR_CACHE_NOT_FOUND ); // User chose to abort.
+			mb_answer = fMessageBox( MB_RETRYCANCEL, "GripMMI", "Error opening %s for binary read.\nWaiting for packets written by GripGroundMonitorClient.\nContinue trying?", filename );
+			if ( mb_answer == IDCANCEL ) return( ERROR_CACHE_NOT_FOUND ); // User chose to abort.
 		}
 	} while ( true ); // Keep trying until success or until user cancels.
 
@@ -330,19 +331,20 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 	// The user can choose to continue to wait or cancel program execution.
 	do {
 		for ( retry_count = 0; retry_count  < MAX_OPEN_CACHE_RETRIES; retry_count ++ ) {
-			// If open succeeds, it will return zero. So if zero return, break from retry loop.
+			// Try to open the packet cache file.
 			fid = _open( filename, _O_RDONLY | _O_BINARY, _SH_DENYNO, _S_IWRITE | _S_IREAD  );
-			if ( fid != 0 ) break;
+			// If open succeeds, it will return zero. So if zero return, break from retry loop.
+			if ( fid >= 0 ) break;
 			// Wait a second before trying again.
 			Sleep( RETRY_PAUSE );
 		}
-		// If fid is non-zero, file is open, so break out of loop and continue.
-		if ( fid != 0 ) break;
-		// If return_code is non-zero, we are here because the retry count has been reached without opening the file.
+		// If fid is non-negative, file is open, so break out of loop and continue.
+		if ( fid >= 0 ) break;
+		// If return_code is negative, we are here because the retry count has been reached without opening the file.
 		// Ask the user if they want to keep on trying or abort.
 		else {
-			mb_answer = fMessageBox( MB_RETRYCANCEL, "GripMMI", "Error opening %s for binary read.\nContinue trying?", filename );
-			if ( mb_answer == IDCANCEL ) exit( ERROR_CACHE_NOT_FOUND ); // User chose to abort.
+			mb_answer = fMessageBox( MB_RETRYCANCEL, "GripMMI", "Error opening %s for binary read.\nWaiting for packets written by GripGroundMonitorClient.\nContinue trying?", filename );
+			if ( mb_answer == IDCANCEL ) return( ERROR_CACHE_NOT_FOUND ); // User chose to abort.
 		}
 	} while ( true ); // Keep trying until success or until user cancels.
 
@@ -1009,7 +1011,10 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 		GripHealthAndStatusInfo hk_info;
 
 		// Get the latest hk packet info.
-		GetLatestGripHK( &hk_info );
+		if ( ERROR_CACHE_NOT_FOUND == GetLatestGripHK( &hk_info ) ) {
+			PostQuitMessage( ERROR_CACHE_NOT_FOUND );
+			return;
+		}
 
 		// Show the selected subject and protocol in the menus.
 		SetDlgItemInt( IDC_SUBJECTID, hk_info.user );
@@ -1078,12 +1083,17 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 	}
 	
 	if ( live || refilter ) {
-
+		int return_value;
 		// Get the data from the packet cache, or simulate it.
-		if ( simulateData ) new_data_available = !( 0 == SimulateGripRT());
-		else new_data_available = (bool) !( 0 == GetGripRT());
-
+		if ( simulateData ) return_value = SimulateGripRT();
+		else return_value = GetGripRT();
+		if ( return_value == ERROR_CACHE_NOT_FOUND ) {
+			PostQuitMessage( ERROR_CACHE_NOT_FOUND );
+			return;
+		}
+		new_data_available = !( 0 == return_value);
 	}
+
 	// If there is new data or if we are refiltering replot all of it.
 	if ( new_data_available || refilter ) {
 		Draw2DGraphics();
