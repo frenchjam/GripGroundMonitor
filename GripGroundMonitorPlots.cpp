@@ -205,7 +205,8 @@ void CGripGroundMonitorDlg::GraphManipulandumPosition( View view, double start_i
 	
 	ViewColor( view, GREY6 );
 	ViewBox( view );
-	ViewTitle( view, "Manipulandum Position", INSIDE_LEFT, INSIDE_TOP, 0.0 );
+	ViewColor( view, BLACK );
+	ViewTitle( view, "Manipulandum Position ", INSIDE_RIGHT, INSIDE_TOP, 0.0 );
 
 	ViewSetXLimits( view, start_instant, stop_instant );
 	ViewSetYLimits( view, lowerPositionLimit, upperPositionLimit );
@@ -229,7 +230,8 @@ void CGripGroundMonitorDlg::GraphManipulandumRotations( View view, double start_
 	
 	ViewColor( view, GREY6 );
 	ViewBox( view );
-	ViewTitle( view, "Manipulandum Rotation", INSIDE_LEFT, INSIDE_TOP, 0.0 );
+	ViewColor( view, BLACK );
+	ViewTitle( view, "Manipulandum Rotation ", INSIDE_RIGHT, INSIDE_TOP, 0.0 );
 
 	ViewSetXLimits( view, start_instant, stop_instant );
 	ViewSetYLimits( view, lowerRotationLimit, upperRotationLimit );
@@ -254,7 +256,8 @@ void CGripGroundMonitorDlg::GraphLoadForce( View view, double start_instant, dou
 	
 	ViewColor( view, GREY6 );
 	ViewBox( view );
-	ViewTitle( view, "Load Force", INSIDE_LEFT, INSIDE_TOP, 0.0 );
+	ViewColor( view, BLACK );
+	ViewTitle( view, "Load Force ", INSIDE_RIGHT, INSIDE_TOP, 0.0 );
 
 	if ( start_frame < start_instant ) start_frame = start_instant;
 	if ( stop_frame >= stop_instant ) stop_frame = stop_instant - 1;
@@ -283,7 +286,8 @@ void CGripGroundMonitorDlg::GraphGripForce( View view, double start_instant, dou
 	
 	ViewColor( view, GREY6 );
 	ViewBox( view );
-	ViewTitle( view, "Grip Force", INSIDE_LEFT, INSIDE_TOP, 0.0 );
+	ViewColor( view, BLACK );
+	ViewTitle( view, "Grip Force ", INSIDE_RIGHT, INSIDE_TOP, 0.0 );
 
 	if ( start_frame < start_instant ) start_frame = start_instant;
 	if ( stop_frame >= stop_instant ) stop_frame = stop_instant - 1;
@@ -307,7 +311,8 @@ void CGripGroundMonitorDlg::GraphAcceleration( View view, double start_instant, 
 	
 	ViewColor( view, GREY6 );
 	ViewBox( view );
-	ViewTitle( view, "Acceleration", INSIDE_LEFT, INSIDE_TOP, 0.0 );
+	ViewColor( view, BLACK );
+	ViewTitle( view, "Acceleration ", INSIDE_RIGHT, INSIDE_TOP, 0.0 );
 
 	if ( start_frame < start_instant ) start_frame = start_instant;
 	if ( stop_frame >= stop_instant ) stop_frame = stop_instant - 1;
@@ -331,7 +336,8 @@ void CGripGroundMonitorDlg::GraphCoP( View view, double start_instant, double st
 	
 	ViewColor( view, GREY6 );
 	ViewBox( view );
-	ViewTitle( view, "Center of Pressure", INSIDE_LEFT, INSIDE_TOP, 0.0 );
+	ViewColor( view, BLACK );
+	ViewTitle( view, "Center of Pressure ", INSIDE_RIGHT, INSIDE_TOP, 0.0 );
 
 	if ( start_frame < start_instant ) start_frame = start_instant;
 	if ( stop_frame >= stop_instant ) stop_frame = stop_instant - 1;
@@ -359,7 +365,8 @@ void CGripGroundMonitorDlg::GraphVisibility( View view, double start_instant, do
 	
 	ViewColor( view, GREY6 );
 	ViewBox( view );
-	ViewTitle( view, "Visibility", INSIDE_LEFT, INSIDE_TOP, 0.0 );
+	ViewColor( view, BLACK );
+	ViewTitle( view, "Visibility ", INSIDE_RIGHT, INSIDE_TOP, 0.0 );
 
 	if ( start_frame < start_instant ) start_frame = start_instant;
 	if ( stop_frame >= stop_instant ) stop_frame = stop_instant - 1;
