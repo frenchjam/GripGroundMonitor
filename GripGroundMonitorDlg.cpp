@@ -196,8 +196,6 @@ END_MESSAGE_MAP()
 // Error code to return if the cache file cannot be opened.
 #define ERROR_CACHE_NOT_FOUND	-1000
 
-#define SLICES_PER_PACKET	10
-
 int CGripGroundMonitorDlg::GetLatestGripHK( GripHealthAndStatusInfo *hk ) {
 
 	static int count = 0;
@@ -421,19 +419,10 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 			if (  (rt.dataSlice[slice].manipulandumVisibility & 0x01) ) ManipulandumVisibility[nFrames] = 10;
 			else ManipulandumVisibility[nFrames] = 0;
 
-			// There appears to be a bug in the packets sent by GRIP.
-			// The acceleration data in the last slice is not valid.
-			// So we only take the valid ones.
-			if ( slice < RT_SLICES_PER_PACKET - 1 ) {
-				Acceleration[nFrames][X] = (double) rt.dataSlice[slice].acceleration[X];
-				Acceleration[nFrames][Y] = (double) rt.dataSlice[slice].acceleration[Y];
-				Acceleration[nFrames][Z] = (double) rt.dataSlice[slice].acceleration[Z];
-			}
-			else {
-				Acceleration[nFrames][X] = MISSING_DOUBLE;
-				Acceleration[nFrames][Y] = MISSING_DOUBLE;
-				Acceleration[nFrames][Z] = MISSING_DOUBLE;
-			}
+			Acceleration[nFrames][X] = (double) rt.dataSlice[slice].acceleration[X];
+			Acceleration[nFrames][Y] = (double) rt.dataSlice[slice].acceleration[Y];
+			Acceleration[nFrames][Z] = (double) rt.dataSlice[slice].acceleration[Z];
+
 			nFrames++;
 		}
 
