@@ -73,8 +73,11 @@ char *CGripGroundMonitorDlg::soundBar[16] = {
 };
 
 // Decode the 2 bits of the mass detectors in the cradles.
-// 00 = empty, 01 = 400gm, 10 = 600gm, 11 = 800gm
-char *CGripGroundMonitorDlg::massDecoder[4] = {".", "S", "M", "L" };
+// 00 = empty, 10 = 400gm, 01 = 600gm, 11 = 800gm
+// Note discrepancy in DEX-ICD-00383-QS Iss E Rev 1 where in one place it is stated that bit 0 is LSB
+//  and that 00 = no mass, 01 = 400 gm, 10 = 600 gm, 11 = 800 gm. Bert confirms that the bit order 
+//  is actually the EPM order (bit 0 is MSB). Therefore 01 = 600 gm and 10 = 400 gm.
+char *CGripGroundMonitorDlg::massDecoder[4] = {".", "M", "S", "L" };
 
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
