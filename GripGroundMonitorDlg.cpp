@@ -79,6 +79,9 @@ char *CGripGroundMonitorDlg::soundBar[16] = {
 //  is actually the EPM order (bit 0 is MSB). Therefore 01 = 600 gm and 10 = 400 gm.
 char *CGripGroundMonitorDlg::massDecoder[4] = {".", "M", "S", "L" };
 
+// Define colors for certain plots to maintain consistency.
+int CGripGroundMonitorDlg::atiColorMap[N_FORCE_TRANSDUCERS] = { CYAN, MAGENTA };
+
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
 
@@ -395,10 +398,16 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 			RealAnalogTime[nFrames] = nFrames * 0.05;
 			
 			// The ICD does not say what is the reference frame for the force data.
-			// I've tried to get it right here, but I am not convinced.
-			// Need to test this more thoroughly.
-			GripForce[nFrames] = ComputeGripForce( rt.dataSlice[slice].ft[0].force, rt.dataSlice[slice].ft[1].force );
+			// I'm pretty sure that this is right.
+			GripForce[nFrames] = ComputeGripForce( rt.dataSlice[slice].ft[LEFT_ATI].force, rt.dataSlice[slice].ft[RIGHT_ATI].force );
 			GripForce[nFrames] = FilterGripForce( GripForce[nFrames] );
+			// It is useful to plot the normal force from each ATI sensor. They should be very similar unless
+			//  the subject is touching the manipulandum outside the ATI sensor surfaces.
+			NormalForce[LEFT_ATI][nFrames] = - rt.dataSlice[slice].ft[LEFT_ATI].force[X];
+			NormalForce[LEFT_ATI][nFrames] = FilterNormalForce( NormalForce[LEFT_ATI][nFrames], LEFT_ATI );
+			NormalForce[RIGHT_ATI][nFrames] = rt.dataSlice[slice].ft[RIGHT_ATI].force[X];
+			NormalForce[RIGHT_ATI][nFrames] = FilterNormalForce( NormalForce[RIGHT_ATI][nFrames], RIGHT_ATI );
+
 			ComputeLoadForce( LoadForce[nFrames], rt.dataSlice[slice].ft[0].force, rt.dataSlice[slice].ft[1].force );
 			LoadForceMagnitude[nFrames] = FilterLoadForce( LoadForce[nFrames] );
 

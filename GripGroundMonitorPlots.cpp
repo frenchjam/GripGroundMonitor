@@ -13,6 +13,7 @@
 #include <sys\stat.h>
 #include <conio.h>
 
+#include "DexAnalogMixin.h"
 #include "GripPackets.h"
 
 // Defines that increase the amount of info in the memory leak report.
@@ -54,8 +55,9 @@ Vector3 CGripGroundMonitorDlg::ManipulandumPosition[MAX_FRAMES];
 float CGripGroundMonitorDlg::Acceleration[MAX_FRAMES][3];
 float CGripGroundMonitorDlg::GripForce[MAX_FRAMES];
 Vector3 CGripGroundMonitorDlg::LoadForce[MAX_FRAMES];
+float CGripGroundMonitorDlg::NormalForce[N_FORCE_TRANSDUCERS][MAX_FRAMES];
 double CGripGroundMonitorDlg::LoadForceMagnitude[MAX_FRAMES];
-Vector3 CGripGroundMonitorDlg::CenterOfPressure[2][MAX_FRAMES];
+Vector3 CGripGroundMonitorDlg::CenterOfPressure[N_FORCE_TRANSDUCERS][MAX_FRAMES];
 float CGripGroundMonitorDlg::RealMarkerTime[MAX_FRAMES];
 float CGripGroundMonitorDlg::CompressedMarkerTime[MAX_FRAMES];
 float CGripGroundMonitorDlg::RealAnalogTime[MAX_FRAMES];
@@ -296,9 +298,13 @@ void CGripGroundMonitorDlg::GraphGripForce( View view, double start_instant, dou
 	ViewSetYLimits( view, lowerGripLimit, upperGripLimit );
 	ViewAxes( view );
 		
-	ViewSelectColor( view, CYAN );
 	if ( stop_frame > start_frame ) {
 //		ViewAutoScaleAvailableFloats( view, &GripForce[0], start_frame, stop_frame, sizeof( *GripForce ), MISSING_FLOAT );
+		ViewColor( view, atiColorMap[LEFT_ATI] );
+		ViewPlotAvailableFloats( view, &NormalForce[LEFT_ATI][0], start_frame, stop_frame, sizeof( *NormalForce[LEFT_ATI] ), MISSING_FLOAT );
+		ViewColor( view, atiColorMap[RIGHT_ATI] );
+		ViewPlotAvailableFloats( view, &NormalForce[RIGHT_ATI][0], start_frame, stop_frame, sizeof( *NormalForce[LEFT_ATI] ), MISSING_FLOAT );
+		ViewColor( view, GREEN );
 		ViewPlotAvailableFloats( view, &GripForce[0], start_frame, stop_frame, sizeof( *GripForce ), MISSING_FLOAT );
 	}
 
@@ -435,10 +441,10 @@ void CGripGroundMonitorDlg::PlotCoP( double start_instant, double stop_instant, 
 	ViewMakeSquare( view );
 
 	if ( stop_frame > start_frame ) {
-		ViewSetColor( view, MAGENTA );
-		ViewScatterPlotAvailableDoubles( view, SYMBOL_FILLED_SQUARE, &CenterOfPressure[0][0][Z], &CenterOfPressure[0][0][Y], start_frame, stop_frame, sizeof( *CenterOfPressure[0] ), sizeof( *CenterOfPressure[0] ), MISSING_FLOAT );
-		ViewSetColor( view, CYAN );
-		ViewScatterPlotAvailableDoubles( view, SYMBOL_FILLED_SQUARE, &CenterOfPressure[1][0][Z], &CenterOfPressure[1][0][Y], start_frame, stop_frame, sizeof( *CenterOfPressure[1] ), sizeof( *CenterOfPressure[1] ), MISSING_FLOAT );
+		ViewColor( view, atiColorMap[LEFT_ATI] );
+		ViewScatterPlotAvailableDoubles( view, SYMBOL_FILLED_SQUARE, &CenterOfPressure[LEFT_ATI][0][Z], &CenterOfPressure[LEFT_ATI][0][Y], start_frame, stop_frame, sizeof( *CenterOfPressure[LEFT_ATI] ), sizeof( *CenterOfPressure[0] ), MISSING_FLOAT );
+		ViewColor( view, atiColorMap[RIGHT_ATI] );
+		ViewScatterPlotAvailableDoubles( view, SYMBOL_FILLED_SQUARE, &CenterOfPressure[RIGHT_ATI][0][Z], &CenterOfPressure[RIGHT_ATI][0][Y], start_frame, stop_frame, sizeof( *CenterOfPressure[RIGHT_ATI] ), sizeof( *CenterOfPressure[RIGHT_ATI] ), MISSING_FLOAT );
 	}
 
 	ViewSetColor( view, RED );

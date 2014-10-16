@@ -81,7 +81,8 @@ public:
 	static double	LoadForceMagnitude[MAX_FRAMES];
 	static float	Acceleration[MAX_FRAMES][3];
 	static float	GripForce[MAX_FRAMES];
-	static Vector3	CenterOfPressure[2][MAX_FRAMES];
+	static float	NormalForce[N_FORCE_TRANSDUCERS][MAX_FRAMES];
+	static Vector3	CenterOfPressure[N_FORCE_TRANSDUCERS][MAX_FRAMES];
 	static char		MarkerVisibility[MAX_FRAMES][CODA_MARKERS];
 	static char		ManipulandumVisibility[MAX_FRAMES];
 
@@ -108,6 +109,7 @@ public:
 	static int windowSpan[SPAN_VALUES];
 	static char *massDecoder[4];
 	static char *soundBar[16];
+	static int  atiColorMap[N_FORCE_TRANSDUCERS];
 
 	const char *packetBufferPathRoot;
 	const char *scriptDirectory;
