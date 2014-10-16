@@ -28,7 +28,7 @@
 #define MAX_MENU_ITEM_LENGTH	1024
 
 // Max number of frames (data slices)
-#define MAX_FRAMES (4*60*60*20)
+#define MAX_FRAMES (12*60*60*20)
 #define CODA_MARKERS 20
 #define	CODA_UNITS	2
 #define MANIPULANDUM_FIRST_MARKER 0
