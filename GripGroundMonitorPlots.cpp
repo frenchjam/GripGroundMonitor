@@ -435,14 +435,20 @@ void CGripGroundMonitorDlg::PlotCoP( double start_instant, double stop_instant, 
 	ViewMakeSquare( view );
 
 	if ( stop_frame > start_frame ) {
-		ViewSetColor( view, RED );
+		ViewSetColor( view, MAGENTA );
 		ViewScatterPlotAvailableDoubles( view, SYMBOL_FILLED_SQUARE, &CenterOfPressure[0][0][Z], &CenterOfPressure[0][0][Y], start_frame, stop_frame, sizeof( *CenterOfPressure[0] ), sizeof( *CenterOfPressure[0] ), MISSING_FLOAT );
-		ViewSetColor( view, BLUE );
+		ViewSetColor( view, CYAN );
 		ViewScatterPlotAvailableDoubles( view, SYMBOL_FILLED_SQUARE, &CenterOfPressure[1][0][Z], &CenterOfPressure[1][0][Y], start_frame, stop_frame, sizeof( *CenterOfPressure[1] ), sizeof( *CenterOfPressure[1] ), MISSING_FLOAT );
 	}
-	ViewSetColor( view, CYAN );
+
+	ViewSetColor( view, RED );
+	ViewFilledCircle( view, CenterOfPressure[0][stop_frame][Z], CenterOfPressure[0][stop_frame][Y], 0.0025 );
+	ViewSetColor( view, BLUE );
+	ViewFilledCircle( view, CenterOfPressure[1][stop_frame][Z], CenterOfPressure[1][stop_frame][Y], 0.0025 );
+
+	ViewSetColor( view, GREY6 );
 	ViewCircle( view, 0.0, 0.0, 0.010 );
-	ViewSetColor( view, MAGENTA );
+	ViewSetColor( view, GREY6 );
 	ViewCircle( view, 0.0, 0.0, 0.020 );
 
 }
