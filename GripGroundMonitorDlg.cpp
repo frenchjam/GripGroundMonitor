@@ -837,48 +837,60 @@ void CGripGroundMonitorDlg::OnGoto()
 }
 
 
-// Position the script selections according to the user, protocol, task and step
-//  values that are found in the 4 corresponding text boxes.
+// Position the script selections according to the specified user, protocol, task and step.
 void CGripGroundMonitorDlg::GoToSpecified( int subject_id, int protocol_id, int task_id, int step_id ) 
 {
 	int i, current_selection;
 
+	// Which subject is already selected?
 	current_selection =  SendDlgItemMessage( IDC_SUBJECTS, LB_GETCURSEL, 0, 0 );
+	// Look for the desired subject ID in the table of available subject IDs.
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
 		if ( subjectID[i] == subject_id ) break;
 	}
+	// If we did not find the desired subject ID, stay with the current selection.
 	if ( subjectID[i] != subject_id ) {
 		SetDlgItemInt( IDC_SUBJECTID, subjectID[current_selection] );
 	}
+	// If we found the desired ID and it is not already selected, change the selection.
 	else if ( i != current_selection ) {
 		SendDlgItemMessage( IDC_SUBJECTS, LB_SETCURSEL, i, 0 );
 		GoToSpecifiedSubject( i );
 	}
 
+	// Which protocol is already selected?
 	current_selection =  SendDlgItemMessage( IDC_PROTOCOLS, LB_GETCURSEL, 0, 0 );
+	// Look for the desired protocol ID in the table of available protocols.
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
 		if ( protocolID[i] == protocol_id ) break;
 	}
+	// If we do not find the desired protocol, stay with the one that is already selected.
 	if ( protocolID[i] != protocol_id ) {
 		SetDlgItemInt( IDC_PROTOCOLID, protocolID[current_selection] );
 	}
+	// If we found the desired and it is not already selected, change the selection.
 	else if ( i != current_selection ) {
 		SendDlgItemMessage( IDC_PROTOCOLS, LB_SETCURSEL, i, 0 );
 		GoToSpecifiedProtocol( i );
 	}
 
+	// Which task is already selected?
 	current_selection =  SendDlgItemMessage( IDC_TASKS, LB_GETCURSEL, 0, 0 );
+	// Look for the desired task ID in the table of available tasks.
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
 		if ( taskID[i] == task_id ) break;
 	}
+	// If we do not find the desired task, stay with the one that is already selected.
 	if ( taskID[i] != task_id ) {
 		SetDlgItemInt( IDC_TASKID, taskID[current_selection] );
 	}
+	// If we found the desired and it is not already selected, change the selection.
 	else if ( i != current_selection ) {
 		SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, i, 0 );
 		GoToSpecifiedTask( i );
 	}
 
+	// Find the desired step number and go to it. Or to the nearest possible.
 	for ( i = 0; i < MAX_STEPS; i++ ) {
 		if ( stepID[i] >= step_id ) break;
 	}
