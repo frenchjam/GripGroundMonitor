@@ -191,7 +191,7 @@ void CGripGroundMonitorDlg::ParseProtocolFile ( const char *filename ) {
 		return;
 	}
 
-	// Work our way through the session file line-by-line.
+	// Work our way through the protocol file line-by-line.
 	SendDlgItemMessage( IDC_TASKS, LB_RESETCONTENT, 0, 0 );
 	while ( fgets( line, sizeof( line ), fp ) ) {
 
@@ -212,10 +212,10 @@ void CGripGroundMonitorDlg::ParseProtocolFile ( const char *filename ) {
 				exit( - 1 );
 			}
 			// The third item is the name of the protocol file.
-			strncpy( task_filename, directory, sizeof( task_filename ) );
-			strncat( task_filename, token[2],  sizeof( task_filename ) );
 			// Check if it is present and readable, unless told to ignore it.
-			if ( !strstr( task_filename, "ignore" ) ) {
+			if ( !strstr( token[2], "ignore" ) ) {
+				strncpy( task_filename, directory, sizeof( task_filename ) );
+				strncat( task_filename, token[2],  sizeof( task_filename ) );
 				if ( _access( task_filename, 0x00 ) ) {
 					sprintf( msg, "%s Line %03d Cannot access protocol file: %s\n", filename, line_n, task_filename );
 					MessageBox( msg, "DexScriptRunner", MB_OK | MB_ICONERROR );
@@ -295,10 +295,10 @@ void CGripGroundMonitorDlg::ParseSessionFile ( const char *filename ) {
 				exit( - 1 );
 			}
 			// The third item is the name of the protocol file.
-			strncpy( protocol_filename, directory, sizeof( protocol_filename ) );
-			strncat( protocol_filename, token[2], sizeof( protocol_filename ) );
 			// Check if it is present and readable, unless told to ignore it.
-			if ( !strstr( protocol_filename, "ignore" ) ) {
+			if ( !strstr( token[2], "ignore" ) ) {
+				strncpy( protocol_filename, directory, sizeof( protocol_filename ) );
+				strncat( protocol_filename, token[2], sizeof( protocol_filename ) );
 				if ( _access( protocol_filename, 0x00 ) ) {
 					sprintf( msg, "%s Line %03d Cannot access protocol file: %s\n", filename, line_n, protocol_filename );
 					MessageBox( msg, "DexScriptRunner", MB_OK | MB_ICONERROR );
@@ -390,7 +390,6 @@ int CGripGroundMonitorDlg::ParseSubjectFile ( const char *filename ) {
 			// Here we check that it is present and if so, we process it as well.
 			strncpy( session_filename, directory, sizeof( session_filename ) );
 			strncat( session_filename, token[3], sizeof( session_filename ) );
-
 			if ( _access( session_filename, 0x00 ) ) {
 				char msg[1024];
 				// The file must not only be present, it also has to be readable.
