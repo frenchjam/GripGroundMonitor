@@ -67,7 +67,7 @@ public:
 	void GoToSpecifiedTask( int task );
 	void GoToSpecifiedStep( int step );
 
-	void GoToSpecified( int subject, int protocol, int task, int step );
+	void GoToSpecifiedIDs( int subject, int protocol, int task, int step );
 
 	// Data buffers.
 	unsigned int	nFrames;
@@ -161,6 +161,11 @@ protected:
 	char session_file[MAX_MENU_ITEMS][MAX_MENU_ITEM_LENGTH];
 	char protocol_file[MAX_MENU_ITEMS][MAX_MENU_ITEM_LENGTH];
 	char task_file[MAX_MENU_ITEMS][MAX_MENU_ITEM_LENGTH];
+
+	int nSubjects;
+	int nProtocols;
+	int nTasks;
+	int nSteps;
 
 	static char picture[MAX_STEPS][256];
 	static char message[MAX_STEPS][132];

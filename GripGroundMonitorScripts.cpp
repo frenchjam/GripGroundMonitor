@@ -148,6 +148,8 @@ void CGripGroundMonitorDlg::ParseTaskFile ( const char *filename ) {
 	
 	fclose( fp );
 
+	nSteps = current_step;
+
 	SendDlgItemMessage( IDC_STEPS, LB_ADDSTRING, 0, (LPARAM) "************ End of Script ************" );
 	strcpy( message[lines], "*********** End of Script ***********\n*********** End of Script ***********\n*********** End of Script ***********\n*********** End of Script ***********" );
 	strcpy( picture[lines], "blank.bmp" );
@@ -168,10 +170,10 @@ void CGripGroundMonitorDlg::ParseProtocolFile ( const char *filename ) {
 	char line[2048];
 	int line_n = 0;
 
-	int  tasks = 0;
 	char task_filename[1024];
-
 	char msg[1024];
+
+	nTasks = 0;
 
 	// We want to work in the same directory as the subject file.
 	// Get the directory from the filename.
@@ -206,7 +208,7 @@ void CGripGroundMonitorDlg::ParseProtocolFile ( const char *filename ) {
 				MessageBox( msg, "DexScriptRunner", MB_OK | MB_ICONERROR );
 			}
 			// Second parameter is a task ID. Should be an integer value.
-			if ( 1 != sscanf( token[1], "%d", &taskID[tasks] ) ) {
+			if ( 1 != sscanf( token[1], "%d", &taskID[nTasks] ) ) {
 				sprintf( msg, "%s Line %03d Error reading task ID: %s\n", filename, line_n, token[1] );
 				MessageBox( msg, "DexScriptRunner", MB_OK | MB_ICONERROR );
 				exit( - 1 );
@@ -222,9 +224,9 @@ void CGripGroundMonitorDlg::ParseProtocolFile ( const char *filename ) {
 				}
 				else {
 					// Add the filename to the list of protocols.
-					strcpy( task_file[tasks], task_filename );
+					strcpy( task_file[nTasks], task_filename );
 					SendDlgItemMessage( IDC_TASKS, LB_ADDSTRING, 0, (LPARAM) token[3] );
-					tasks++;
+					nTasks++;
 				}
 			}
 
@@ -250,10 +252,10 @@ void CGripGroundMonitorDlg::ParseSessionFile ( const char *filename ) {
 	char line[2048];
 	int line_n = 0;
 
-	int protocols = 0;
 	char protocol_filename[1024];
-
 	char msg[1024];
+
+	nProtocols = 0;
 
 	// We want to work in the same directory as the subject file.
 	// Get the directory from the filename.
@@ -289,7 +291,7 @@ void CGripGroundMonitorDlg::ParseSessionFile ( const char *filename ) {
 				MessageBox( msg, "DexScriptRunner", MB_OK | MB_ICONERROR );
 			}
 			// Second parameter is a protocol ID. Should be an integer value.
-			if ( 1 != sscanf( token[1], "%d", &protocolID[protocols] ) ) {
+			if ( 1 != sscanf( token[1], "%d", &protocolID[nProtocols] ) ) {
 				sprintf( msg, "%s Line %03d Error reading protocol ID: %s\n", filename, line_n, token[1] );
 				MessageBox( msg, "DexScriptRunner", MB_OK | MB_ICONERROR );
 				exit( - 1 );
@@ -305,9 +307,9 @@ void CGripGroundMonitorDlg::ParseSessionFile ( const char *filename ) {
 				}
 				else {
 					// Add the filename to the list of protocols.
-					strcpy( protocol_file[protocols], protocol_filename );
+					strcpy( protocol_file[nProtocols], protocol_filename );
 					SendDlgItemMessage( IDC_PROTOCOLS, LB_ADDSTRING, 0, (LPARAM) token[3] );
-					protocols++;
+					nProtocols++;
 				}
 			}
 
@@ -335,7 +337,8 @@ int CGripGroundMonitorDlg::ParseSubjectFile ( const char *filename ) {
 	int line_n = 0;
 
 	char session_filename[1024];
-	int subjects = 0;
+
+	nSubjects = 0;
 
 	// We want to work in the same directory as the subject file.
 	// Get the directory from the filename.
@@ -379,7 +382,7 @@ int CGripGroundMonitorDlg::ParseSubjectFile ( const char *filename ) {
 			}
 			// Second parameter is a subject ID. Should be an integer value.
 			// Verify also that subject IDs are unique.
-			if ( 1 != sscanf( token[1], "%d", &subjectID[subjects] ) ) {
+			if ( 1 != sscanf( token[1], "%d", &subjectID[nSubjects] ) ) {
 				char msg[1024];
 				// Report error for invalid subject ID field.
 				sprintf( msg, "Line %03d Error reading subject ID: %s\n", line_n, token[1] );
@@ -400,9 +403,9 @@ int CGripGroundMonitorDlg::ParseSubjectFile ( const char *filename ) {
 			}	
 			else {
 			
-				strcpy( session_file[subjects], session_filename );
+				strcpy( session_file[nSubjects], session_filename );
 				SendDlgItemMessage( IDC_SUBJECTS, LB_ADDSTRING, 0, (LPARAM) token[4] );
-				subjects++;
+				nSubjects++;
 			
 			}
 			// There is a fifth field to the line, which is text describing the subject.

@@ -196,7 +196,7 @@ END_MESSAGE_MAP()
 // Realtime operations.
 
 // Max times to try to open the cache file before asking user to continue or not.
-#define MAX_OPEN_CACHE_RETRIES	5
+#define MAX_OPEN_CACHE_RETRIES	(60*5)
 // Pause time in milliseconds between file open retries.
 #define RETRY_PAUSE	2000		
 // Error code to return if the cache file cannot be opened.
@@ -217,13 +217,6 @@ int CGripGroundMonitorDlg::GetLatestGripHK( GripHealthAndStatusInfo *hk ) {
 
 	EPMTelemetryPacket packet;
 	EPMTelemetryHeaderInfo epmHeader;
-
-	struct {
-		int user;
-		int protocol;
-		int task;
-		int step;
-	} non_zero = {0, 0, 0, 0};
 
 	char filename[1024];
 
@@ -270,15 +263,8 @@ int CGripGroundMonitorDlg::GetLatestGripHK( GripHealthAndStatusInfo *hk ) {
 			fMessageBox( MB_OK, "GripMMIlite", "Unrecognized packet from %s.", filename );
 			exit( -1 );
 		}
-		// When the subject exits a task, the task counter goes to zero, but the subject
-		//  sees the menu item for the next task highlighted. So we try to guess what 
-		//  the next step is going to be. To do that, we have to look for transitions to 0, 0;
+		// Extract the interesting info in proper byte order.
 		ExtractGripHealthAndStatusInfo( hk, &packet );
-		if ( hk->user != 0 ) non_zero.user = hk->user;
-		if ( hk->protocol != 0 ) non_zero.protocol = hk->protocol;
-		if ( hk->task != 0 ) non_zero.task = hk->task;
-		if ( hk->step != 0 ) non_zero.step = hk->step;
-
 	}
 	// Finished reading. Close the file and check for errors.
 	return_code = _close( fid );
@@ -286,12 +272,6 @@ int CGripGroundMonitorDlg::GetLatestGripHK( GripHealthAndStatusInfo *hk ) {
 		fMessageBox( MB_OK, "GripMMI", "Error closing %s after binary read.\nError code: %s", filename, return_code );
 		exit( return_code );
 	}
-
-	ExtractGripHealthAndStatusInfo( hk, &packet );
-	hk->user = ( hk->user == 0 ? non_zero.user : hk->user );
-	hk->protocol = ( hk->protocol == 0 ? non_zero.protocol : hk->protocol );
-	hk->task = ( hk->task == 0 ? non_zero.task : hk->task );
-	hk->step = ( hk->step == 0 ? non_zero.step : hk->step );
 
 	// Check if there were new packets since the last time we read the cache.
 	// Return TRUE if yes, FALSE if no.
@@ -585,12 +565,17 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	// Reset the data buffers.
 	ResetBuffers();
 
+	// Reset the script crawler.
+	nSubjects = 0;
+	nProtocols = 0;
+	nTasks = 0;
+	nSteps = 0;
+
 	// Starting from the root, load all the script items.
 	strncpy( user_file_path, scriptDirectory, sizeof( user_file_path )) ;
 	strncat( user_file_path, "users.dex", sizeof( user_file_path )) ;
 	if ( 0 != ParseSubjectFile( user_file_path )) PostQuitMessage( 0 );
-	SendDlgItemMessage( IDC_SUBJECTS, LB_SETCURSEL, 0, 0 );
-	OnSelchangeSubjects();
+	GoToSpecifiedSubject( UNDEFINED );
 
 	// Create the 2D graphics displays.
 	Intialize2DGraphics();
@@ -681,10 +666,21 @@ void CGripGroundMonitorDlg::OnSelchangeSubjects()
 }
 void CGripGroundMonitorDlg::GoToSpecifiedSubject( int subject ) 
 {
-	ParseSessionFile( session_file[subject] );
-	SendDlgItemMessage( IDC_SUBJECTS, LB_SETCURSEL, subject, 0 );
-	SetDlgItemInt( IDC_SUBJECTID, subjectID[subject] );
-	GoToSpecifiedProtocol( 0 );	
+	if ( subject < 0 || subject >= nSubjects ) {
+		// Show no subject selected.
+		SendDlgItemMessage( IDC_SUBJECTS, LB_SETCURSEL, -1, 0 );
+		SetDlgItemInt( IDC_SUBJECTID, 0 );
+		// Clear the protocol list to reflect that there is no subject selected.
+		SendDlgItemMessage( IDC_PROTOCOLS, LB_RESETCONTENT, 0, 0 );
+		nProtocols = 0;
+	}
+	else {
+		ParseSessionFile( session_file[subject] );
+		SendDlgItemMessage( IDC_SUBJECTS, LB_SETCURSEL, subject, 0 );
+		SetDlgItemInt( IDC_SUBJECTID, subjectID[subject] );
+	}	
+	// We don't know yet what protocol will be selected.
+	GoToSpecifiedProtocol( UNDEFINED );
 }
 
 // Update to be performed when the selected protocol changes.
@@ -697,10 +693,21 @@ void CGripGroundMonitorDlg::OnSelchangeProtocols()
 }
 void CGripGroundMonitorDlg::GoToSpecifiedProtocol( int protocol ) 
 {
-	ParseProtocolFile( protocol_file[protocol] );
-	SendDlgItemMessage( IDC_PROTOCOLS, LB_SETCURSEL, protocol, 0 );
-	SetDlgItemInt( IDC_PROTOCOLID, protocolID[protocol] );
-	GoToSpecifiedTask( 0 );
+	if ( protocol < 0 || protocol >= nProtocols ) {
+		// Show no protocol selected.
+		SendDlgItemMessage( IDC_PROTOCOLS, LB_SETCURSEL, -1, 0 );
+		SetDlgItemInt( IDC_PROTOCOLID, 0 );
+		// Clear the task list to reflect that there is no protocol selected.
+		SendDlgItemMessage( IDC_TASKS, LB_RESETCONTENT, 0, 0 );
+		nTasks = 0;
+	}
+	else {
+		ParseProtocolFile( protocol_file[protocol] );
+		SendDlgItemMessage( IDC_PROTOCOLS, LB_SETCURSEL, protocol, 0 );
+		SetDlgItemInt( IDC_PROTOCOLID, protocolID[protocol] );
+	}	
+	// We don't know yet what protocol will be selected.
+	GoToSpecifiedTask( UNDEFINED );
 }
 
 // Update to be performed when the selected task changes.
@@ -713,16 +720,25 @@ void CGripGroundMonitorDlg::OnSelchangeTasks()
 }
 void CGripGroundMonitorDlg::GoToSpecifiedTask( int task ) 
 {
-	ParseTaskFile( task_file[task] );
-	SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, task, 0 );
-	SetDlgItemInt( IDC_TASKID, taskID[task] );
-	GoToSpecifiedStep( 0 );	
+	if ( task < 0 || task >= nTasks ) {
+		// Show no task selected.
+		SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, -1, 0 );
+		SetDlgItemInt( IDC_TASKID, 0 );
+		// Clear the step list to reflect that there is no task selected.
+		SendDlgItemMessage( IDC_STEPS, LB_RESETCONTENT, 0, 0 );
+		nSteps = 0;
+	}
+	else {
+		ParseTaskFile( task_file[task] );
+		SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, task, 0 );
+		SetDlgItemInt( IDC_TASKID, taskID[task] );
+	}
+	GoToSpecifiedStep( UNDEFINED );	
 }
 
 // Update to be performed when the selected step is changed.
 void CGripGroundMonitorDlg::OnSelchangeSteps() 
 {
-
 	// Script crawler is no longer live.
 	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_UNCHECKED, 0 );
 	int step = SendDlgItemMessage( IDC_STEPS, LB_GETCURSEL, 0, 0 );
@@ -735,9 +751,16 @@ void CGripGroundMonitorDlg::GoToSpecifiedStep( int step )
 	static HBITMAP bm = 0;
 	char line[1024];
 
-	// Center the selected line in the box.
-	SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, step + 14, 0 );
-	SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, step, 0 );
+	if ( step < 0 ) {
+		SetDlgItemInt( IDC_STEPID, 0 );
+		SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, -1, 0 );
+	}
+	else {
+		// Center the selected line in the box.
+		SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, step + 14, 0 );
+		SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, step, 0 );
+		SetDlgItemInt( IDC_STEPID, stepID[step] );
+	}
 
 	// Show the full line in a larger box.
 	SendDlgItemMessage( IDC_STEPS, LB_GETTEXT, step, (LPARAM) line );
@@ -769,7 +792,6 @@ void CGripGroundMonitorDlg::GoToSpecifiedStep( int step )
 		GetDlgItem( IDINTERRUPT )->ShowWindow( SW_SHOW );
 	}
 
-	SetDlgItemInt( IDC_STEPID, stepID[step] );
 
 	// Convert \n escape sequence to newline. 
 	for ( char *ptr =message[step]; *ptr; ptr++ ) {
@@ -833,12 +855,15 @@ void CGripGroundMonitorDlg::OnGoto()
 	int task_id = GetDlgItemInt( IDC_TASKID );
 	int step_id = GetDlgItemInt( IDC_STEPID );
 
-	GoToSpecified( subject_id, protocol_id, task_id, step_id );
+	GoToSpecifiedIDs( subject_id, protocol_id, task_id, step_id );
 }
 
 
-// Position the script selections according to the specified user, protocol, task and step.
-void CGripGroundMonitorDlg::GoToSpecified( int subject_id, int protocol_id, int task_id, int step_id ) 
+// Position the script selections according to the specified user, protocol, task and step IDs.
+// Note that unlike the routines above, the subject, protocol, task and step are specified as
+//  their ID labels, not as the index into the respective tables, so we have to search for the
+//  corresponding table entries and handle the case where we do not find them.
+void CGripGroundMonitorDlg::GoToSpecifiedIDs( int subject_id, int protocol_id, int task_id, int step_id ) 
 {
 	int i, current_selection;
 
@@ -848,10 +873,8 @@ void CGripGroundMonitorDlg::GoToSpecified( int subject_id, int protocol_id, int 
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
 		if ( subjectID[i] == subject_id ) break;
 	}
-	// If we did not find the desired subject ID, stay with the current selection.
-	if ( subjectID[i] != subject_id ) {
-		SetDlgItemInt( IDC_SUBJECTID, subjectID[current_selection] );
-	}
+	// If we did not find the desired subject ID ...
+	if ( subjectID[i] != subject_id ) GoToSpecifiedSubject( UNDEFINED );
 	// If we found the desired ID and it is not already selected, change the selection.
 	else if ( i != current_selection ) {
 		SendDlgItemMessage( IDC_SUBJECTS, LB_SETCURSEL, i, 0 );
@@ -864,10 +887,8 @@ void CGripGroundMonitorDlg::GoToSpecified( int subject_id, int protocol_id, int 
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
 		if ( protocolID[i] == protocol_id ) break;
 	}
-	// If we do not find the desired protocol, stay with the one that is already selected.
-	if ( protocolID[i] != protocol_id ) {
-		SetDlgItemInt( IDC_PROTOCOLID, protocolID[current_selection] );
-	}
+	// If we do not find the desired protocol ...
+	if ( protocolID[i] != protocol_id ) GoToSpecifiedProtocol( UNDEFINED );
 	// If we found the desired and it is not already selected, change the selection.
 	else if ( i != current_selection ) {
 		SendDlgItemMessage( IDC_PROTOCOLS, LB_SETCURSEL, i, 0 );
@@ -880,10 +901,8 @@ void CGripGroundMonitorDlg::GoToSpecified( int subject_id, int protocol_id, int 
 	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
 		if ( taskID[i] == task_id ) break;
 	}
-	// If we do not find the desired task, stay with the one that is already selected.
-	if ( taskID[i] != task_id ) {
-		SetDlgItemInt( IDC_TASKID, taskID[current_selection] );
-	}
+	// If we do not find the desired task ...
+	if ( taskID[i] != task_id ) GoToSpecifiedTask( UNDEFINED );
 	// If we found the desired and it is not already selected, change the selection.
 	else if ( i != current_selection ) {
 		SendDlgItemMessage( IDC_TASKS, LB_SETCURSEL, i, 0 );
@@ -1037,12 +1056,7 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 
 		// Update everything as if the subject, protocol, task and step had been entered by
 		//  hand and then someone pushes the GoTo button.
-		GoToSpecified( hk_info.user, hk_info.protocol, hk_info.task, hk_info.step );
-
-		// GoToSpecified( ) has the side effect of going non-live.
-		// Need to set back to live mode.
-		// SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_CHECKED, 0 );
-
+		GoToSpecifiedIDs( hk_info.user, hk_info.protocol, hk_info.task, hk_info.step );
 
 		// State of the target LEDs.
 		strcpy( target_state_string, "" );
