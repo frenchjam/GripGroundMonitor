@@ -440,18 +440,23 @@ void CGripGroundMonitorDlg::PlotCoP( double start_instant, double stop_instant, 
 	ViewSetYLimits( view, lowerCopLimit, upperCopLimit );
 	ViewMakeSquare( view );
 
+	// Plot the history of CoPs within the selected time window.
 	if ( stop_frame > start_frame ) {
-		ViewColor( view, atiColorMap[LEFT_ATI] );
-		ViewScatterPlotAvailableDoubles( view, SYMBOL_FILLED_SQUARE, &CenterOfPressure[LEFT_ATI][0][Z], &CenterOfPressure[LEFT_ATI][0][Y], start_frame, stop_frame, sizeof( *CenterOfPressure[LEFT_ATI] ), sizeof( *CenterOfPressure[0] ), MISSING_FLOAT );
 		ViewColor( view, atiColorMap[RIGHT_ATI] );
 		ViewScatterPlotAvailableDoubles( view, SYMBOL_FILLED_SQUARE, &CenterOfPressure[RIGHT_ATI][0][Z], &CenterOfPressure[RIGHT_ATI][0][Y], start_frame, stop_frame, sizeof( *CenterOfPressure[RIGHT_ATI] ), sizeof( *CenterOfPressure[RIGHT_ATI] ), MISSING_FLOAT );
+		ViewColor( view, atiColorMap[LEFT_ATI] );
+		ViewScatterPlotAvailableDoubles( view, SYMBOL_FILLED_SQUARE, &CenterOfPressure[LEFT_ATI][0][Z], &CenterOfPressure[LEFT_ATI][0][Y], start_frame, stop_frame, sizeof( *CenterOfPressure[LEFT_ATI] ), sizeof( *CenterOfPressure[0] ), MISSING_FLOAT );
 	}
 
-	ViewSetColor( view, RED );
-	ViewFilledCircle( view, CenterOfPressure[0][stop_frame][Z], CenterOfPressure[0][stop_frame][Y], 0.0025 );
-	ViewSetColor( view, BLUE );
-	ViewFilledCircle( view, CenterOfPressure[1][stop_frame][Z], CenterOfPressure[1][stop_frame][Y], 0.0025 );
+	// If we are live, plot the current CoP.
+	if ( SendDlgItemMessage( IDC_LIVE, BM_GETCHECK, 0, 0 ) ) {	
+		ViewSetColor( view, RED );
+		ViewFilledCircle( view, CenterOfPressure[0][stop_frame][Z], CenterOfPressure[0][stop_frame][Y], 0.0025 );
+		ViewSetColor( view, BLUE );
+		ViewFilledCircle( view, CenterOfPressure[1][stop_frame][Z], CenterOfPressure[1][stop_frame][Y], 0.0025 );
+	}
 
+	// Plot the critical region for a centered grip.
 	ViewSetColor( view, GREY6 );
 	ViewCircle( view, 0.0, 0.0, 0.010 );
 	ViewSetColor( view, GREY6 );
