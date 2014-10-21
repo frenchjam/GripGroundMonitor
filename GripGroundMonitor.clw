@@ -56,7 +56,7 @@ Control4=IDOK,button,1342373889
 [DLG:IDD_GRIPGROUNDMONITOR_DIALOG]
 Type=1
 Class=IddGripGroundDialog
-ControlCount=49
+ControlCount=50
 Control1=IDC_STEPS,listbox,1353777409
 Control2=IDC_SUBJECTID,edit,1350631552
 Control3=IDC_PROTOCOLID,edit,1350631552
@@ -106,6 +106,7 @@ Control46=IDC_TARGETS,listbox,1350566147
 Control47=IDC_STATIC,button,1342177287
 Control48=IDC_TONE,listbox,1350566147
 Control49=IDC_STATIC,button,1342177287
+Control50=IDC_SCRIPTS_ERROR,button,1476395012
 
 [CLS:IddGripGroundDialog]
 Type=0

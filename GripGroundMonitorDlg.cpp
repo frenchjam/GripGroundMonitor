@@ -565,6 +565,7 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMIN, TRUE, 0 );
 	SendDlgItemMessage( IDC_LIVE, BM_SETCHECK, BST_CHECKED, 0 );
 	SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_SETCHECK, BST_CHECKED, 0 );
+	SendDlgItemMessage( IDC_SCRIPTS_ERROR, BM_SETCHECK, BST_UNCHECKED, 0 );
 	m_scrollbar.SetScrollRange( 0, 1000 );
 	m_scrollbar.SetScrollPos( 1000 );
 
@@ -734,6 +735,8 @@ void CGripGroundMonitorDlg::GoToSpecifiedStep( int step )
 	static HBITMAP bm = 0;
 	char line[1024];
 
+	char local_message[1024], local_picture[1024];
+
 	if ( step <= 0 ) {
 		SetDlgItemInt( IDC_STEPID, 0 );
 		SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, -1, 0 );
@@ -750,7 +753,6 @@ void CGripGroundMonitorDlg::GoToSpecifiedStep( int step )
 	m_detailsPopup->DisplayLine( line );
 
 	// Show what kind of display it is.
-	SetDlgItemText( IDC_TYPE, type[step] );
 
 	// Show or hide buttons accordingly.
 	if ( type[step] == type_alert ) {
@@ -759,6 +761,24 @@ void CGripGroundMonitorDlg::GoToSpecifiedStep( int step )
 		GetDlgItem( IDIGNORE )->ShowWindow( SW_SHOW );
 		GetDlgItem( IDCANCEL )->ShowWindow( SW_SHOW );
 		GetDlgItem( IDINTERRUPT )->ShowWindow( SW_HIDE );
+
+		if ( SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_GETCHECK, 0, 0 ) && SendDlgItemMessage( IDC_SCRIPTS_ERROR, BM_GETCHECK, 0, 0 ) ) {
+			strcpy( local_message, message[step] );
+			strcpy( local_picture, picture[step] );
+			SetDlgItemText( IDC_TYPE, "Alert (triggered)" );
+		}
+		else if (SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_GETCHECK, 0, 0 ) ) {
+			strcpy( local_message, "Test pending ..." );
+			strcpy( local_picture, "blank.bmp" );
+			SetDlgItemText( IDC_TYPE, "Alert (not triggered)" );
+		}
+		else {
+			strcpy( local_message, message[step] );
+			strcpy( local_picture, picture[step] );
+			SetDlgItemText( IDC_TYPE, "Alert (shown if error)" );
+		}
+
+
 	}
 	else if ( type[step] == type_query ) {
 		GetDlgItem( IDOK )->ShowWindow( SW_SHOW );
@@ -766,6 +786,9 @@ void CGripGroundMonitorDlg::GoToSpecifiedStep( int step )
 		GetDlgItem( IDIGNORE )->ShowWindow( SW_HIDE );
 		GetDlgItem( IDCANCEL )->ShowWindow( SW_SHOW );
 		GetDlgItem( IDINTERRUPT )->ShowWindow( SW_HIDE );
+		strcpy( local_message, message[step] );
+		strcpy( local_picture, picture[step] );
+		SetDlgItemText( IDC_TYPE, type[step] );
 	}
 	else {
 		GetDlgItem( IDOK )->ShowWindow( SW_HIDE );
@@ -773,23 +796,28 @@ void CGripGroundMonitorDlg::GoToSpecifiedStep( int step )
 		GetDlgItem( IDRETRY )->ShowWindow( SW_HIDE );
 		GetDlgItem( IDCANCEL )->ShowWindow( SW_HIDE );
 		GetDlgItem( IDINTERRUPT )->ShowWindow( SW_SHOW );
+		strcpy( local_message, message[step] );
+		strcpy( local_picture, picture[step] );
+		SetDlgItemText( IDC_TYPE, type[step] );
 	}
 
 
 	// Convert \n escape sequence to newline. 
-	for ( char *ptr =message[step]; *ptr; ptr++ ) {
+	for ( char *ptr = local_message; *ptr; ptr++ ) {
 		if ( *ptr == '\\' && *(ptr+1) == 'n' ) {
 			*ptr = '\r';
 			*(ptr+1) = '\n';
 		}
 	}
-	SetDlgItemText( IDC_STATUS_TEXT, message[step] );
+
+	// Show the text message.
+	SetDlgItemText( IDC_STATUS_TEXT, local_message );
 
 	// Show the picture.
-	if ( strlen( picture[step] ) ) {
+	if ( strlen( local_picture ) ) {
 		char picture_path[1024];
 		strncpy( picture_path, PictureFilenamePrefix, sizeof( picture_path ) );
-		strncat( picture_path, picture[step], sizeof( picture_path ) );
+		strncat( picture_path, local_picture, sizeof( picture_path ) );
 		// If we had loaded a bitmap previously, free the associated memory.
 		DeleteObject( bm );
 		bm = (HBITMAP) LoadImage( NULL, picture_path, IMAGE_BITMAP, (int) (.65 * 540), (int) (.65 * 405), LR_CREATEDIBSECTION | LR_LOADFROMFILE | LR_VGACOLOR );
@@ -1069,6 +1097,10 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 			return;
 		}
 		else if ( return_code == TRUE ) {
+
+			// Show the state of the script engine.
+			if ( hk_info.task != 0 && hk_info.scriptEngineStatusEnum == 0x1000 ) SendDlgItemMessage( IDC_SCRIPTS_ERROR, BM_SETCHECK, BST_CHECKED, 0 );
+			else SendDlgItemMessage( IDC_SCRIPTS_ERROR, BM_SETCHECK, BST_UNCHECKED, 0 );
 
 			// Show the selected subject and protocol in the menus.
 			SetDlgItemInt( IDC_SUBJECTID, hk_info.user );
