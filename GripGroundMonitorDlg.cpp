@@ -196,9 +196,9 @@ END_MESSAGE_MAP()
 // Realtime operations.
 
 // Max times to try to open the cache file before asking user to continue or not.
-#define MAX_OPEN_CACHE_RETRIES	(60*5)
+#define MAX_OPEN_CACHE_RETRIES	(5)
 // Pause time in milliseconds between file open retries.
-#define RETRY_PAUSE	2000		
+#define RETRY_PAUSE	20		
 // Error code to return if the cache file cannot be opened.
 #define ERROR_CACHE_NOT_FOUND	-1000
 
@@ -213,7 +213,6 @@ int CGripGroundMonitorDlg::GetLatestGripHK( GripHealthAndStatusInfo *hk ) {
 	static unsigned short previousTMCounter = 0;
 	unsigned short bit = 0;
 	int retry_count;
-	int mb_answer;
 
 	EPMTelemetryPacket packet;
 	EPMTelemetryHeaderInfo epmHeader;
@@ -223,26 +222,17 @@ int CGripGroundMonitorDlg::GetLatestGripHK( GripHealthAndStatusInfo *hk ) {
 	CreateGripPacketCacheFilename( filename, sizeof( filename ), GRIP_HK_BULK_PACKET, packetBufferPathRoot );
 
 	// Attempt to open the packet cache to read the accumulated packets.
-	// If it is not immediately available, try for a few seconds then query the user.
-	// The user can choose to continue to wait or cancel program execution.
-	do {
-		for ( retry_count = 0; retry_count  < MAX_OPEN_CACHE_RETRIES; retry_count ++ ) {
-			// Try to open the packet cache file.
-			fid = _open( filename, _O_RDONLY | _O_BINARY, _SH_DENYNO, _S_IWRITE | _S_IREAD  );
-			// If open succeeds, it will return zero. So if zero return, break from retry loop.
-			if ( fid >= 0 ) break;
-			// Wait a second before trying again.
-			Sleep( RETRY_PAUSE );
-		}
-		// If fid is non-negative, file is open, so break out of loop and continue.
+	// If it is not immediately available, try for a few seconds.
+	for ( retry_count = 0; retry_count  < MAX_OPEN_CACHE_RETRIES; retry_count ++ ) {
+		// Try to open the packet cache file.
+		fid = _open( filename, _O_RDONLY | _O_BINARY, _SH_DENYNO, _S_IWRITE | _S_IREAD  );
+		// If open succeeds, it will return zero. So if zero return, break from retry loop.
 		if ( fid >= 0 ) break;
-		// If return_code is negative, we are here because the retry count has been reached without opening the file.
-		// Ask the user if they want to keep on trying or abort.
-		else {
-			mb_answer = fMessageBox( MB_RETRYCANCEL, "GripMMI", "Error opening %s for binary read.\nWaiting for packets written by GripGroundMonitorClient.\nContinue trying?", filename );
-			if ( mb_answer == IDCANCEL ) return( ERROR_CACHE_NOT_FOUND ); // User chose to abort.
-		}
-	} while ( true ); // Keep trying until success or until user cancels.
+		// Wait a second before trying again.
+		Sleep( RETRY_PAUSE );
+	}
+	// If fid is negative, file is not open, so return saying that no new data is available.
+	if ( fid < 0 ) return( FALSE );
 
 	// Read in all of the data packets in the file.
 	packets_read = 0;
@@ -295,7 +285,6 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 	static unsigned short previousTMCounter = 0;
 	unsigned short bit = 0;
 	int retry_count;
-	int mb_answer;
 
 	EPMTelemetryPacket		packet;
 	EPMTelemetryHeaderInfo	epmHeader;
@@ -311,26 +300,17 @@ int CGripGroundMonitorDlg::GetGripRT( void ) {
 	CreateGripPacketCacheFilename( filename, sizeof( filename ), GRIP_RT_SCIENCE_PACKET, packetBufferPathRoot );
 
 	// Attempt to open the packet cache to read the accumulated packets.
-	// If it is not immediately available, try for a few seconds then query the user.
-	// The user can choose to continue to wait or cancel program execution.
-	do {
-		for ( retry_count = 0; retry_count  < MAX_OPEN_CACHE_RETRIES; retry_count ++ ) {
-			// Try to open the packet cache file.
-			fid = _open( filename, _O_RDONLY | _O_BINARY, _SH_DENYNO, _S_IWRITE | _S_IREAD  );
-			// If open succeeds, it will return zero. So if zero return, break from retry loop.
-			if ( fid >= 0 ) break;
-			// Wait a second before trying again.
-			Sleep( RETRY_PAUSE );
-		}
-		// If fid is non-negative, file is open, so break out of loop and continue.
+	// If it is not immediately available, try for a few seconds.
+	for ( retry_count = 0; retry_count  < MAX_OPEN_CACHE_RETRIES; retry_count ++ ) {
+		// Try to open the packet cache file.
+		fid = _open( filename, _O_RDONLY | _O_BINARY, _SH_DENYNO, _S_IWRITE | _S_IREAD  );
+		// If open succeeds, it will return zero. So if zero return, break from retry loop.
 		if ( fid >= 0 ) break;
-		// If return_code is negative, we are here because the retry count has been reached without opening the file.
-		// Ask the user if they want to keep on trying or abort.
-		else {
-			mb_answer = fMessageBox( MB_RETRYCANCEL, "GripMMI", "Error opening %s for binary read.\nWaiting for packets written by GripGroundMonitorClient.\nContinue trying?", filename );
-			if ( mb_answer == IDCANCEL ) return( ERROR_CACHE_NOT_FOUND ); // User chose to abort.
-		}
-	} while ( true ); // Keep trying until success or until user cancels.
+		// Wait a second before trying again.
+		Sleep( RETRY_PAUSE );
+	}
+	// If fid is negative, cannot be opened.
+	if ( fid < 0 ) return( FALSE );
 
 	// Read in all of the data packets in the file.
 	packets_read = 0;
@@ -579,7 +559,7 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 
 	// Create the 2D graphics displays.
 	Intialize2DGraphics();
-	Draw2DGraphics();
+	// Draw2DGraphics();
 
 	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMAX, TRUE, SPAN_VALUES - 1 );
 	SendDlgItemMessage( IDC_TIMESCALE, TBM_SETRANGEMIN, TRUE, 0 );
@@ -593,8 +573,11 @@ BOOL CGripGroundMonitorDlg::OnInitDialog()
 	logobm = (HBITMAP) LoadImage( NULL, logo_file_path, IMAGE_BITMAP, (int) (.45 * 540), (int) (.45 * 405), LR_CREATEDIBSECTION | LR_LOADFROMFILE | LR_VGACOLOR );
 	SendDlgItemMessage( IDC_COP, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM) logobm );
 
-	strcpy( markerVisibilityString[0], "visibility not available" );
-	strcpy( markerVisibilityString[1], "visibility not available" );
+	SendDlgItemMessage( IDC_MARKERS, LB_INSERTSTRING, 0, (LPARAM) "Waiting for packets ..." );
+	SendDlgItemMessage( IDC_MARKERS, LB_INSERTSTRING, 1, (LPARAM) packetBufferPathRoot );
+
+	strcpy( markerVisibilityString[0], "Waiting for RT packets ..." );
+	strcpy( markerVisibilityString[1], "Waiting for RT packets ..." );
 
 	SetTimer( IDT_TIMER1, 500, NULL );
 
@@ -751,7 +734,7 @@ void CGripGroundMonitorDlg::GoToSpecifiedStep( int step )
 	static HBITMAP bm = 0;
 	char line[1024];
 
-	if ( step < 0 ) {
+	if ( step <= 0 ) {
 		SetDlgItemInt( IDC_STEPID, 0 );
 		SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, -1, 0 );
 	}
@@ -870,7 +853,7 @@ void CGripGroundMonitorDlg::GoToSpecifiedIDs( int subject_id, int protocol_id, i
 	// Which subject is already selected?
 	current_selection =  SendDlgItemMessage( IDC_SUBJECTS, LB_GETCURSEL, 0, 0 );
 	// Look for the desired subject ID in the table of available subject IDs.
-	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
+	for ( i = 0; i < nSubjects - 1; i++ ) {
 		if ( subjectID[i] == subject_id ) break;
 	}
 	// If we did not find the desired subject ID ...
@@ -884,7 +867,7 @@ void CGripGroundMonitorDlg::GoToSpecifiedIDs( int subject_id, int protocol_id, i
 	// Which protocol is already selected?
 	current_selection =  SendDlgItemMessage( IDC_PROTOCOLS, LB_GETCURSEL, 0, 0 );
 	// Look for the desired protocol ID in the table of available protocols.
-	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
+	for ( i = 0; i < nProtocols - 1; i++ ) {
 		if ( protocolID[i] == protocol_id ) break;
 	}
 	// If we do not find the desired protocol ...
@@ -898,7 +881,7 @@ void CGripGroundMonitorDlg::GoToSpecifiedIDs( int subject_id, int protocol_id, i
 	// Which task is already selected?
 	current_selection =  SendDlgItemMessage( IDC_TASKS, LB_GETCURSEL, 0, 0 );
 	// Look for the desired task ID in the table of available tasks.
-	for ( i = 0; i < MAX_STEPS - 1; i++ ) {
+	for ( i = 0; i < nTasks; i++ ) {
 		if ( taskID[i] == task_id ) break;
 	}
 	// If we do not find the desired task ...
@@ -910,10 +893,9 @@ void CGripGroundMonitorDlg::GoToSpecifiedIDs( int subject_id, int protocol_id, i
 	}
 
 	// Find the desired step number and go to it. Or to the nearest possible.
-	for ( i = 0; i < MAX_STEPS; i++ ) {
+	for ( i = 0; i < nSteps; i++ ) {
 		if ( stepID[i] >= step_id ) break;
 	}
-	SendDlgItemMessage( IDC_STEPS, LB_SETCURSEL, i, 0 );
 	GoToSpecifiedStep( i );
 
 }
@@ -1027,70 +1009,12 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 
 	long filtering;
 	static long previous_filtering_setting = -1;
+	int return_code;
 
 	// Kill the timer so that we don't get retriggered before we finish.
 	// In other words, treat it like a one-shot timer.
 	KillTimer( IDT_TIMER1 );
 	
-	if ( SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_GETCHECK, 0, 0 ) ) {
-
-		int i;
-		unsigned long bit;
-		char target_state_string[32];
-		char mass_state_string[8];
-		char coda_state_string[64];
-
-		GripHealthAndStatusInfo hk_info;
-
-		// Get the latest hk packet info.
-		if ( ERROR_CACHE_NOT_FOUND == GetLatestGripHK( &hk_info ) ) {
-			PostQuitMessage( ERROR_CACHE_NOT_FOUND );
-			return;
-		}
-
-		// Show the selected subject and protocol in the menus.
-		SetDlgItemInt( IDC_SUBJECTID, hk_info.user );
-		SetDlgItemInt( IDC_PROTOCOLID, hk_info.protocol );
-		SetDlgItemInt( IDC_TASKID, hk_info.task );
-		SetDlgItemInt( IDC_STEPID, hk_info.step );
-
-		// Update everything as if the subject, protocol, task and step had been entered by
-		//  hand and then someone pushes the GoTo button.
-		GoToSpecifiedIDs( hk_info.user, hk_info.protocol, hk_info.task, hk_info.step );
-
-		// State of the target LEDs.
-		strcpy( target_state_string, "" );
-		for ( i = 0, bit = 0x01; i < 10; i++, bit = bit << 1 ) {
-			if ( bit & hk_info.horizontalTargetFeedback ) strcat( target_state_string, "O" );
-			else strcat( target_state_string, "." );
-		}
-		SendDlgItemMessage( IDC_TARGETS, LB_INSERTSTRING, 0, (LPARAM) target_state_string );
-		strcpy( target_state_string, "" );
-		for ( i = 0, bit = 0x01; i < 13; i++, bit = bit << 1 ) {
-			if ( bit & hk_info.verticalTargetFeedback ) strcat( target_state_string, "O" );
-			else strcat( target_state_string, "." );
-		}
-		SendDlgItemMessage( IDC_TARGETS, LB_INSERTSTRING, 1, (LPARAM) target_state_string );
-
-		// State of the tone generator.
-		SendDlgItemMessage( IDC_TONE, LB_INSERTSTRING, 0, (LPARAM) soundBar[ hk_info.toneFeedback] );
-
-		// State of the mass cradles.
-		strcpy( mass_state_string, "  " );
-		strcat( mass_state_string, massDecoder[ hk_info.cradleDetectors >> 0 & 0x03 ] );
-		strcat( mass_state_string, massDecoder[ hk_info.cradleDetectors >> 2 & 0x03 ] );
-		strcat( mass_state_string, massDecoder[ hk_info.cradleDetectors >> 4 & 0x03 ] );		
-		SendDlgItemMessage( IDC_TONE, LB_INSERTSTRING, 1, (LPARAM) mass_state_string );
-
-		strcpy( coda_state_string, markerVisibilityString[0] );
-		if ( hk_info.motionTrackerStatusEnum == 2 ) strcat( coda_state_string, " A" );
-		SendDlgItemMessage( IDC_MARKERS, LB_INSERTSTRING, 0, (LPARAM) coda_state_string );
-		strcpy( coda_state_string, markerVisibilityString[1] );
-		if ( hk_info.crewCameraStatusEnum == 2 ) strcat( coda_state_string, " F" );
-		SendDlgItemMessage( IDC_MARKERS, LB_INSERTSTRING, 1, (LPARAM) coda_state_string );
-
-	}
-
 	// If we are in live mode, get the latest real-time 
 	// science data and add it to the buffers.
 	if ( SendDlgItemMessage( IDC_LIVE, BM_GETCHECK, 0, 0 ) ) {
@@ -1126,6 +1050,70 @@ void CGripGroundMonitorDlg::OnTimer(UINT nIDEvent)
 		Draw2DGraphics();
 		PostMessage( WM_PAINT );
 	}
+
+	// Handle HK packets and the script crawler.
+	if ( SendDlgItemMessage( IDC_SCRIPTS_LIVE, BM_GETCHECK, 0, 0 ) ) {
+
+		int i;
+		unsigned long bit;
+		char target_state_string[32];
+		char mass_state_string[8];
+		char coda_state_string[64];
+
+		GripHealthAndStatusInfo hk_info;
+
+		// Get the latest hk packet info.
+		return_code = GetLatestGripHK( &hk_info );
+		if ( ERROR_CACHE_NOT_FOUND == return_code ) {
+			PostQuitMessage( ERROR_CACHE_NOT_FOUND );
+			return;
+		}
+		else if ( return_code == TRUE ) {
+
+			// Show the selected subject and protocol in the menus.
+			SetDlgItemInt( IDC_SUBJECTID, hk_info.user );
+			SetDlgItemInt( IDC_PROTOCOLID, hk_info.protocol );
+			SetDlgItemInt( IDC_TASKID, hk_info.task );
+			SetDlgItemInt( IDC_STEPID, hk_info.step );
+
+			// Update everything as if the subject, protocol, task and step had been entered by
+			//  hand and then someone pushes the GoTo button.
+			GoToSpecifiedIDs( hk_info.user, hk_info.protocol, hk_info.task, hk_info.step );
+
+			// State of the target LEDs.
+			strcpy( target_state_string, "" );
+			for ( i = 0, bit = 0x01; i < 10; i++, bit = bit << 1 ) {
+				if ( bit & hk_info.horizontalTargetFeedback ) strcat( target_state_string, "O" );
+				else strcat( target_state_string, "." );
+			}
+			SendDlgItemMessage( IDC_TARGETS, LB_INSERTSTRING, 0, (LPARAM) target_state_string );
+			strcpy( target_state_string, "" );
+			for ( i = 0, bit = 0x01; i < 13; i++, bit = bit << 1 ) {
+				if ( bit & hk_info.verticalTargetFeedback ) strcat( target_state_string, "O" );
+				else strcat( target_state_string, "." );
+			}
+			SendDlgItemMessage( IDC_TARGETS, LB_INSERTSTRING, 1, (LPARAM) target_state_string );
+
+			// State of the tone generator.
+			SendDlgItemMessage( IDC_TONE, LB_INSERTSTRING, 0, (LPARAM) soundBar[ hk_info.toneFeedback] );
+
+			// State of the mass cradles.
+			strcpy( mass_state_string, "  " );
+			strcat( mass_state_string, massDecoder[ hk_info.cradleDetectors >> 0 & 0x03 ] );
+			strcat( mass_state_string, massDecoder[ hk_info.cradleDetectors >> 2 & 0x03 ] );
+			strcat( mass_state_string, massDecoder[ hk_info.cradleDetectors >> 4 & 0x03 ] );		
+			SendDlgItemMessage( IDC_TONE, LB_INSERTSTRING, 1, (LPARAM) mass_state_string );
+
+			strcpy( coda_state_string, markerVisibilityString[0] );
+			if ( hk_info.motionTrackerStatusEnum == 2 ) strcat( coda_state_string, " A" );
+			SendDlgItemMessage( IDC_MARKERS, LB_INSERTSTRING, 0, (LPARAM) coda_state_string );
+			strcpy( coda_state_string, markerVisibilityString[1] );
+			if ( hk_info.crewCameraStatusEnum == 2 ) strcat( coda_state_string, " F" );
+			SendDlgItemMessage( IDC_MARKERS, LB_INSERTSTRING, 1, (LPARAM) coda_state_string );
+
+		}
+	}
+
 
 	// Start timer again for next round.
 	SetTimer( IDT_TIMER1, 200, NULL );
